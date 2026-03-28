@@ -134,10 +134,10 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-3 right-3 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none sm:top-4 sm:right-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="ring-offset-background focus:ring-ring text-foreground absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-20 inline-flex size-10 items-center justify-center rounded-full border border-border/80 bg-background/95 shadow-[0_10px_25px_rgba(0,0,0,0.18)] opacity-100 transition hover:bg-accent hover:text-accent-foreground focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none sm:right-4 sm:top-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[18px]"
           >
             <XIcon />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">Fechar modal</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
