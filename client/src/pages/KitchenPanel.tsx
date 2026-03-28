@@ -1225,18 +1225,29 @@ export default function KitchenPanel() {
             <Button
               type="button"
               onClick={() => setIsCreateInternalOpen(true)}
-              className="fogareiro-admin-metric h-full min-h-[6.9rem] flex-col items-start justify-between rounded-xl border border-accent/35 bg-accent/12 p-4 text-left text-accent shadow-[0_18px_40px_rgba(0,0,0,0.12)] hover:bg-accent hover:text-accent-foreground sm:p-5"
+              className="fogareiro-admin-metric relative h-full min-h-[6.9rem] overflow-hidden rounded-[1.25rem] border border-accent/30 bg-[radial-gradient(circle_at_top_right,rgba(255,186,160,0.18),transparent_34%),linear-gradient(180deg,rgba(108,55,44,0.92),rgba(66,34,30,0.96))] p-0 text-left text-[#ffe6da] shadow-[0_18px_40px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-[0_24px_46px_rgba(0,0,0,0.18)]"
             >
-              <div className="rounded-full border border-current/25 p-2">
-                <Plus className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.25em] opacity-80">
-                  Atalho
-                </p>
-                <p className="mt-2 text-base font-bold leading-tight">
-                  Novo pedido presencial
-                </p>
+              <div className="flex h-full flex-col justify-between p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="rounded-full border border-white/15 bg-white/8 p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                    <Plus className="h-4 w-4" />
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-black/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#ffd5c6]">
+                    Atalho
+                  </span>
+                </div>
+
+                <div className="mt-5">
+                  <p className="text-sm font-semibold leading-none text-[#ffd5c6]">
+                    Abrir rapido
+                  </p>
+                  <p className="mt-2 text-base font-bold leading-tight text-white sm:text-lg">
+                    Novo pedido presencial
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-[#f0c6b7]">
+                    Toque para montar a comanda da mesa sem sair da fila.
+                  </p>
+                </div>
               </div>
             </Button>
           ) : (
