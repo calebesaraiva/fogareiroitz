@@ -178,6 +178,7 @@ export default function KitchenPanel() {
   const [isFinishedModalOpen, setIsFinishedModalOpen] = useState(false);
   const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isCreateInternalOpen, setIsCreateInternalOpen] = useState(false);
   const previousPendingIdsRef = useRef<number[]>([]);
   const previousOverdueIdsRef = useRef<number[]>([]);
   const pendingAlertRef = useRef<ReturnType<typeof createLoopingAlert> | null>(null);
@@ -765,6 +766,7 @@ export default function KitchenPanel() {
       );
 
       resetInternalOrderForm();
+      setIsCreateInternalOpen(false);
       await ordersQuery.refetch();
       toast.success("Pedido presencial criado sem etapa de aprovacao");
     } catch (error) {
@@ -1250,6 +1252,30 @@ export default function KitchenPanel() {
           </section>
         )}
 
+        {canCreateInternal && (
+          <section className="rounded-[1.75rem] border border-border/70 bg-card/92 p-4 shadow-[0_18px_46px_rgba(0,0,0,0.14)] sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Plus className="h-4 w-4 text-accent" />
+                  Pedido presencial rapido
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Abra um pedido interno em poucos toques, sem ocupar espaco fixo da tela no celular.
+                </p>
+              </div>
+              <Button
+                type="button"
+                className="w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto"
+                onClick={() => setIsCreateInternalOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Novo pedido presencial
+              </Button>
+            </div>
+          </section>
+        )}
+
         <section className="rounded-[1.75rem] border border-border/70 bg-card/90 p-4 shadow-[0_18px_46px_rgba(0,0,0,0.14)] sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -1379,159 +1405,6 @@ export default function KitchenPanel() {
               </CardContent>
             </Card>
 
-            {canCreateInternal && (
-              <Card className="border-border/70 bg-card/92 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Plus className="h-5 w-5 text-accent" />
-                    Novo pedido presencial
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleCreateInternalOrder} className="space-y-4">
-                    <div className="grid grid-cols-1 gap-3">
-                      <div>
-                        <label className="mb-2 block text-sm font-semibold">
-                          Nome do cliente ou identificacao
-                        </label>
-                        <Input
-                          value={customerName}
-                          onChange={(event) => setCustomerName(event.target.value)}
-                          placeholder="Ex: Balcao, Mesa 4, Maria"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-semibold">Mesa</label>
-                        <select
-                          value={selectedTableId}
-                          onChange={(event) => setSelectedTableId(event.target.value)}
-                          className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        >
-                          <option value="">Selecione a mesa</option>
-                          {(tablesQuery.data ?? []).map((table) => (
-                            <option key={table.id} value={table.id}>
-                              Mesa {table.number}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-semibold">Telefone</label>
-                        <Input
-                          value={customerPhone}
-                          onChange={(event) => setCustomerPhone(event.target.value)}
-                          placeholder="Obrigatorio para acompanhamento"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-semibold">Observacoes</label>
-                        <textarea
-                          value={notes}
-                          onChange={(event) => setNotes(event.target.value)}
-                          rows={3}
-                          placeholder="Detalhes do atendimento interno"
-                          className="w-full rounded-lg border border-input bg-background p-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                      <p className="mb-3 text-sm font-semibold text-foreground">
-                        Adicionar item
-                      </p>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_110px]">
-                        <select
-                          value={selectedProductId}
-                          onChange={(event) => setSelectedProductId(event.target.value)}
-                          className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        >
-                          <option value="">Selecione um item do cardapio</option>
-                          {products.map((product) => (
-                            <option key={product.id} value={product.id}>
-                              {product.name} - {formatPrice(product.price)}
-                            </option>
-                          ))}
-                        </select>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={draftQuantity}
-                          onChange={(event) => setDraftQuantity(event.target.value)}
-                          placeholder="Qtd"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="mt-3 w-full"
-                        onClick={addDraftItem}
-                      >
-                        Adicionar ao pedido
-                      </Button>
-                    </div>
-
-                    <div className="space-y-3">
-                      {draftItems.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
-                          Nenhum item adicionado ainda.
-                        </div>
-                      ) : (
-                        draftItems.map((item) => (
-                          <div
-                            key={item.productId}
-                            className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/45 p-3"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <p className="font-semibold text-foreground">
-                                  {item.quantity}x {item.productName}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {formatPrice(item.unitPrice)} cada
-                                </p>
-                              </div>
-                              <p className="font-semibold text-accent">
-                                {formatPrice(item.totalPrice)}
-                              </p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => removeDraftItem(item.productId)}
-                            >
-                              Remover
-                            </Button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    <div className="rounded-2xl bg-muted/55 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-muted-foreground">Total interno</span>
-                        <span className="text-xl font-bold text-accent">
-                          {formatPrice(internalTotal)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={createInternalMutation.isPending}
-                      className="w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                    >
-                      <ChefHat className="h-4 w-4" />
-                      {createInternalMutation.isPending
-                        ? "Criando pedido..."
-                        : "Criar pedido interno"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
           </aside>
         </section>
 
@@ -1790,6 +1663,185 @@ export default function KitchenPanel() {
                   <WalletCards className="h-4 w-4" />
                   {updateStatusMutation.isPending ? "Salvando..." : "Confirmar pagamento e encerrar"}
                 </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={isCreateInternalOpen}
+          onOpenChange={(open) => (open ? setIsCreateInternalOpen(true) : setIsCreateInternalOpen(false))}
+        >
+          <DialogContent className="h-[calc(100dvh-0.5rem)] max-h-[calc(100dvh-0.5rem)] max-w-[calc(100vw-0.5rem)] grid-rows-[auto_minmax(0,1fr)_auto] border-border/70 bg-card/98 p-3 sm:h-auto sm:max-h-[calc(100dvh-1rem)] sm:max-w-[min(860px,calc(100vw-2rem))] sm:p-4">
+            <DialogHeader className="pr-10 pb-1 text-left sm:pr-8">
+              <DialogTitle>Novo pedido presencial</DialogTitle>
+              <DialogDescription>
+                Monte a comanda da mesa sem poluir a tela principal. Ideal para uso rapido no salao e no celular.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleCreateInternalOrder} className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-3 sm:gap-4">
+              <div className="fogareiro-scrollbar grid min-h-0 gap-3 overflow-y-auto pr-1 sm:pr-2 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
+                    <p className="mb-3 text-sm font-semibold text-foreground">Dados da mesa</p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">
+                          Nome do cliente ou identificacao
+                        </label>
+                        <Input
+                          value={customerName}
+                          onChange={(event) => setCustomerName(event.target.value)}
+                          placeholder="Ex: Balcao, Mesa 4, Maria"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">Mesa</label>
+                        <select
+                          value={selectedTableId}
+                          onChange={(event) => setSelectedTableId(event.target.value)}
+                          className="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="">Selecione a mesa</option>
+                          {(tablesQuery.data ?? []).map((table) => (
+                            <option key={table.id} value={table.id}>
+                              Mesa {table.number}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">Telefone</label>
+                        <Input
+                          value={customerPhone}
+                          onChange={(event) => setCustomerPhone(event.target.value)}
+                          placeholder="Obrigatorio para acompanhamento"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">Observacoes</label>
+                        <textarea
+                          value={notes}
+                          onChange={(event) => setNotes(event.target.value)}
+                          rows={4}
+                          placeholder="Detalhes do atendimento interno"
+                          className="w-full rounded-lg border border-input bg-background p-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
+                    <p className="mb-3 text-sm font-semibold text-foreground">Adicionar item</p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_110px]">
+                      <select
+                        value={selectedProductId}
+                        onChange={(event) => setSelectedProductId(event.target.value)}
+                        className="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Selecione um item do cardapio</option>
+                        {products.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.name} - {formatPrice(product.price)}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={draftQuantity}
+                        onChange={(event) => setDraftQuantity(event.target.value)}
+                        placeholder="Qtd"
+                        className="h-12"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-3 h-11 w-full"
+                      onClick={addDraftItem}
+                    >
+                      Adicionar ao pedido
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">Itens da comanda</p>
+                      <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                        {draftItems.length} item(ns)
+                      </span>
+                    </div>
+
+                    <div className="fogareiro-scrollbar max-h-[28rem] space-y-3 overflow-y-auto pr-1 sm:max-h-[24rem]">
+                      {draftItems.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
+                          Nenhum item adicionado ainda.
+                        </div>
+                      ) : (
+                        draftItems.map((item) => (
+                          <div
+                            key={item.productId}
+                            className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/45 p-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="font-semibold text-foreground">
+                                  {item.quantity}x {item.productName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {formatPrice(item.unitPrice)} cada
+                                </p>
+                              </div>
+                              <p className="font-semibold text-accent">
+                                {formatPrice(item.totalPrice)}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-10"
+                              onClick={() => removeDraftItem(item.productId)}
+                            >
+                              Remover
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-muted/55 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-muted-foreground">Total interno</span>
+                      <span className="text-xl font-bold text-accent">
+                        {formatPrice(internalTotal)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="sticky bottom-0 -mx-3 border-t border-border/70 bg-card/98 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:pt-0 sm:pb-0">
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="outline" className="h-11" onClick={() => setIsCreateInternalOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createInternalMutation.isPending}
+                    className="h-11 w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto"
+                  >
+                    <ChefHat className="h-4 w-4" />
+                    {createInternalMutation.isPending ? "Criando pedido..." : "Criar pedido interno"}
+                  </Button>
+                </div>
               </div>
             </form>
           </DialogContent>
