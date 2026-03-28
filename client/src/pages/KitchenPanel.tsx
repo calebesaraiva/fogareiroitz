@@ -1221,6 +1221,27 @@ export default function KitchenPanel() {
               </p>
             </CardContent>
           </Card>
+          {canCreateInternal ? (
+            <Button
+              type="button"
+              onClick={() => setIsCreateInternalOpen(true)}
+              className="fogareiro-admin-metric h-full min-h-[6.9rem] flex-col items-start justify-between rounded-xl border border-accent/35 bg-accent/12 p-4 text-left text-accent shadow-[0_18px_40px_rgba(0,0,0,0.12)] hover:bg-accent hover:text-accent-foreground sm:p-5"
+            >
+              <div className="rounded-full border border-current/25 p-2">
+                <Plus className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.25em] opacity-80">
+                  Atalho
+                </p>
+                <p className="mt-2 text-base font-bold leading-tight">
+                  Novo pedido presencial
+                </p>
+              </div>
+            </Button>
+          ) : (
+            <div className="hidden lg:block" />
+          )}
           <Card className="fogareiro-admin-metric col-span-2 border-border/70 bg-card/90 lg:col-span-1">
             <CardContent className="p-4 sm:p-5">
               <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
