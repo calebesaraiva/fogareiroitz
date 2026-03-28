@@ -66,7 +66,14 @@ type Product = {
 type OrderSummary = {
   id: number;
   customerName: string;
-  status: "pending" | "new" | "preparing" | "ready" | "delivered" | "cancelled";
+  status:
+    | "pending"
+    | "new"
+    | "preparing"
+    | "ready"
+    | "awaiting_payment"
+    | "delivered"
+    | "cancelled";
   orderType: "dine_in" | "takeaway" | "reservation";
   tableId?: number | null;
   total: number;

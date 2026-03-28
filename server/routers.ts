@@ -43,6 +43,7 @@ const phoneSchema = z
   });
 
 const staffRoleSchema = z.enum(["admin", "kitchen", "waiter"]);
+const paymentMethodSchema = z.enum(["pix", "card", "cash"]);
 
 export const appRouter = router({
   system: systemRouter,
@@ -337,18 +338,33 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number().int().positive(),
-          status: z.enum(["pending", "new", "preparing", "ready", "delivered", "cancelled"]),
+          status: z.enum([
+            "pending",
+            "new",
+            "preparing",
+            "ready",
+            "awaiting_payment",
+            "delivered",
+            "cancelled",
+          ]),
           estimatedReadyMinutes: z.number().int().positive().max(240).nullable().optional(),
+          paymentMethod: paymentMethodSchema.nullable().optional(),
+          paymentNotes: z.string().max(500).nullable().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         if (!canOperateOrders(ctx.user?.role)) throw new Error("Unauthorized");
-        if (input.estimatedReadyMinutes !== undefined) {
-          return updateOrderStatusWithMeta(
-            input.id,
-            input.status,
-            input.estimatedReadyMinutes
-          );
+        if (
+          input.estimatedReadyMinutes !== undefined ||
+          input.paymentMethod !== undefined ||
+          input.paymentNotes !== undefined
+        ) {
+          return updateOrderStatusWithMeta(input.id, input.status, {
+            estimatedReadyMinutes: input.estimatedReadyMinutes,
+            paymentMethod: input.paymentMethod,
+            paymentNotes: input.paymentNotes?.trim() || null,
+            paidAt: input.status === "delivered" ? new Date() : undefined,
+          });
         }
         return updateOrderStatus(input.id, input.status);
       }),

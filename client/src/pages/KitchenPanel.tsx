@@ -23,6 +23,7 @@ import {
   Plus,
   RefreshCcw,
   ShieldCheck,
+  WalletCards,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -34,10 +35,20 @@ type KitchenOrder = {
   customerName: string;
   customerPhone: string | null;
   orderType: "dine_in" | "takeaway" | "reservation";
-  status: "pending" | "new" | "preparing" | "ready" | "delivered" | "cancelled";
+  status:
+    | "pending"
+    | "new"
+    | "preparing"
+    | "ready"
+    | "awaiting_payment"
+    | "delivered"
+    | "cancelled";
   tableNumber: number | null;
   tableLabel: string | null;
   estimatedReadyMinutes: number | null;
+  paymentMethod: "pix" | "card" | "cash" | null;
+  paymentNotes: string | null;
+  paidAt: Date | null;
   guestCount: number | null;
   notes: string | null;
   total: number;
@@ -79,12 +90,16 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   new: "Aprovado",
   preparing: "Em preparo",
   ready: "Pronto",
+  awaiting_payment: "Aguardando pagamento",
   delivered: "Entregue",
   cancelled: "Cancelado",
 };
 
-const STATUS_FLOW: OrderStatus[] = ["pending", "new", "preparing", "ready", "delivered"];
-const ACTIVE_FLOW: OrderStatus[] = ["new", "preparing", "ready", "delivered"];
+const PAYMENT_METHOD_LABEL: Record<NonNullable<KitchenOrder["paymentMethod"]>, string> = {
+  pix: "Pix",
+  card: "Cartao",
+  cash: "Dinheiro",
+};
 
 const canAccessKitchenPanel = (role?: string | null) =>
   role === "kitchen" || role === "waiter";
@@ -162,6 +177,7 @@ export default function KitchenPanel() {
 
   const [isFinishedModalOpen, setIsFinishedModalOpen] = useState(false);
   const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const previousPendingIdsRef = useRef<number[]>([]);
   const previousOverdueIdsRef = useRef<number[]>([]);
   const pendingAlertRef = useRef<ReturnType<typeof createLoopingAlert> | null>(null);
@@ -179,6 +195,9 @@ export default function KitchenPanel() {
   const [editSelectedProductId, setEditSelectedProductId] = useState("");
   const [editDraftQuantity, setEditDraftQuantity] = useState("1");
   const [editDraftItems, setEditDraftItems] = useState<DraftItem[]>([]);
+  const [paymentOrder, setPaymentOrder] = useState<KitchenOrder | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"pix" | "card" | "cash">("pix");
+  const [paymentNotes, setPaymentNotes] = useState("");
   const [estimateByOrderId, setEstimateByOrderId] = useState<Record<number, string>>({});
   const [nowTs, setNowTs] = useState(() => Date.now());
 
@@ -207,6 +226,8 @@ export default function KitchenPanel() {
           order.estimatedReadyMinutes === null || order.estimatedReadyMinutes === undefined
             ? null
             : Number(order.estimatedReadyMinutes),
+        paidAt:
+          order.paidAt === null || order.paidAt === undefined ? null : new Date(order.paidAt),
         items: order.items.map((item) => ({
           ...item,
           id: Number(item.id),
@@ -251,11 +272,12 @@ export default function KitchenPanel() {
     const overdueIds = orders
       .filter((order) => {
         if (
-          order.status === "cancelled" ||
-          order.status === "delivered" ||
-          order.status === "ready" ||
-          !order.estimatedReadyMinutes
-        ) {
+        order.status === "cancelled" ||
+        order.status === "delivered" ||
+        order.status === "ready" ||
+        order.status === "awaiting_payment" ||
+        !order.estimatedReadyMinutes
+      ) {
           return false;
         }
 
@@ -302,6 +324,7 @@ export default function KitchenPanel() {
         new: 0,
         preparing: 0,
         ready: 0,
+        awaiting_payment: 0,
         delivered: 0,
         cancelled: 0,
       }
@@ -312,11 +335,13 @@ export default function KitchenPanel() {
         countByStatus.pending +
         countByStatus.new +
         countByStatus.preparing +
-        countByStatus.ready,
+        countByStatus.ready +
+        countByStatus.awaiting_payment,
       pendingOrders: countByStatus.pending,
       newOrders: countByStatus.new,
       preparingOrders: countByStatus.preparing,
       readyOrders: countByStatus.ready,
+      awaitingPaymentOrders: countByStatus.awaiting_payment,
       finishedOrders: countByStatus.delivered + countByStatus.cancelled,
     };
   }, [orders]);
@@ -334,10 +359,17 @@ export default function KitchenPanel() {
       new: 0,
       preparing: 1,
       ready: 2,
+      awaiting_payment: 3,
     };
 
     return orders
-      .filter((order) => order.status === "new" || order.status === "preparing" || order.status === "ready")
+      .filter(
+        (order) =>
+          order.status === "new" ||
+          order.status === "preparing" ||
+          order.status === "ready" ||
+          order.status === "awaiting_payment"
+      )
       .sort((a, b) => {
         const aRank = rank[a.status as keyof typeof rank] ?? 99;
         const bRank = rank[b.status as keyof typeof rank] ?? 99;
@@ -392,12 +424,22 @@ export default function KitchenPanel() {
         const dueAt = createdAt + order.estimatedReadyMinutes * 60_000;
         const diffMinutes = Math.round((dueAt - nowTs) / 60000);
 
+        if (order.status === "awaiting_payment") {
+          notices.push({
+            orderId: order.id,
+            tone: "info",
+            title: `Pedido #${order.id} aguardando pagamento`,
+            detail: "A equipe de salao pode registrar a forma de pagamento e encerrar a comanda.",
+          });
+          return;
+        }
+
         if (order.status === "ready") {
           notices.push({
             orderId: order.id,
             tone: "success",
             title: `Pedido #${order.id} pronto para entrega`,
-            detail: "Avise o atendimento ou finalize como entregue quando sair.",
+            detail: "Garcom pode levar para a mesa e mover para aguardando pagamento.",
           });
           return;
         }
@@ -458,6 +500,7 @@ export default function KitchenPanel() {
     const diffMinutes = Math.round((dueAt - nowTs) / 60000);
 
     if (order.status === "ready") return "Pedido pronto para sair";
+    if (order.status === "awaiting_payment") return "Aguardando pagamento na mesa";
     if (diffMinutes < 0) return `${Math.abs(diffMinutes)} min de atraso`;
     if (diffMinutes === 0) return "Prazo no limite";
     return `${diffMinutes} min restantes`;
@@ -466,7 +509,11 @@ export default function KitchenPanel() {
   const handleStatusChange = async (
     orderId: number,
     status: OrderStatus,
-    estimatedReadyMinutes?: number | null
+    estimatedReadyMinutes?: number | null,
+    paymentPayload?: {
+      paymentMethod?: "pix" | "card" | "cash" | null;
+      paymentNotes?: string | null;
+    }
   ) => {
     try {
       await withLoading(
@@ -475,20 +522,51 @@ export default function KitchenPanel() {
             id: orderId,
             status,
             estimatedReadyMinutes,
+            paymentMethod: paymentPayload?.paymentMethod,
+            paymentNotes: paymentPayload?.paymentNotes,
           }),
         { message: `Atualizando pedido para ${STATUS_LABEL[status]}` }
       );
       await ordersQuery.refetch();
       toast.success(`Pedido atualizado para "${STATUS_LABEL[status]}"`);
+      return true;
     } catch (error) {
       console.error(error);
       toast.error("Nao foi possivel atualizar o status do pedido");
+      return false;
     }
   };
 
   const handleAcceptOrder = async (orderId: number) => {
     const estimate = Math.max(1, Number(estimateByOrderId[orderId] || "20") || 20);
     await handleStatusChange(orderId, "new", estimate);
+  };
+
+  const openPaymentModal = (order: KitchenOrder) => {
+    setPaymentOrder(order);
+    setPaymentMethod(order.paymentMethod ?? "pix");
+    setPaymentNotes(order.paymentNotes ?? "");
+    setIsPaymentModalOpen(true);
+  };
+
+  const closePaymentModal = () => {
+    setIsPaymentModalOpen(false);
+    setPaymentOrder(null);
+    setPaymentMethod("pix");
+    setPaymentNotes("");
+  };
+
+  const handleFinalizePayment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!paymentOrder) return;
+
+    const saved = await handleStatusChange(paymentOrder.id, "delivered", undefined, {
+      paymentMethod,
+      paymentNotes: paymentNotes.trim() || null,
+    });
+    if (saved) {
+      closePaymentModal();
+    }
   };
 
   const addDraftItem = () => {
@@ -791,6 +869,9 @@ export default function KitchenPanel() {
     if (status === "ready") {
       return "border-emerald-400/25 bg-[linear-gradient(180deg,rgba(26,44,35,0.92),rgba(22,28,25,0.98))] ring-1 ring-emerald-400/20";
     }
+    if (status === "awaiting_payment") {
+      return "border-violet-300/25 bg-[linear-gradient(180deg,rgba(48,34,54,0.94),rgba(29,22,34,0.98))] ring-1 ring-violet-300/18";
+    }
     if (status === "cancelled") {
       return "border-destructive/20 bg-[linear-gradient(180deg,rgba(52,23,29,0.95),rgba(33,16,21,0.98))]";
     }
@@ -821,6 +902,10 @@ export default function KitchenPanel() {
               {order.guestCount && <p>Pessoas: {order.guestCount}</p>}
               <p>Codigo: {order.trackingCode}</p>
               {order.estimatedReadyMinutes ? <p>Previsao: {order.estimatedReadyMinutes} min</p> : null}
+              {order.paymentMethod ? (
+                <p>Pagamento: {PAYMENT_METHOD_LABEL[order.paymentMethod]}</p>
+              ) : null}
+              {order.paidAt ? <p>Pago em: {formatDateTime(order.paidAt)}</p> : null}
               {getRemainingLabel(order) ? (
                 <p className="font-medium text-foreground">Andamento do prazo: {getRemainingLabel(order)}</p>
               ) : null}
@@ -895,6 +980,20 @@ export default function KitchenPanel() {
           </div>
         )}
 
+        {(order.paymentMethod || order.paymentNotes) && (
+          <div className="rounded-xl border border-border/70 bg-background/50 p-3">
+            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Pagamento</p>
+            {order.paymentMethod ? (
+              <p className="mt-2 text-sm text-foreground">
+                Forma registrada: {PAYMENT_METHOD_LABEL[order.paymentMethod]}
+              </p>
+            ) : null}
+            {order.paymentNotes ? (
+              <p className="mt-1 text-sm text-muted-foreground">{order.paymentNotes}</p>
+            ) : null}
+          </div>
+        )}
+
         {order.status === "pending" ? (
           <div className="space-y-3">
             <Button
@@ -961,19 +1060,59 @@ export default function KitchenPanel() {
               Editar pedido
             </Button>
 
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-              {ACTIVE_FLOW.map((status) => (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {order.status !== "new" ? null : (
                 <Button
-                  key={status}
                   type="button"
-                  variant={order.status === status ? "default" : "outline"}
-                  className={order.status === status ? "bg-accent text-accent-foreground" : ""}
-                  onClick={() => handleStatusChange(order.id, status)}
+                  variant="outline"
+                  onClick={() => handleStatusChange(order.id, "preparing")}
                   disabled={updateStatusMutation.isPending}
                 >
-                  {STATUS_LABEL[status]}
+                  Marcar em preparo
                 </Button>
-              ))}
+              )}
+              {order.status !== "preparing" ? null : (
+                <Button
+                  type="button"
+                  className="bg-accent text-accent-foreground hover:bg-accent/90"
+                  onClick={() => handleStatusChange(order.id, "ready")}
+                  disabled={updateStatusMutation.isPending}
+                >
+                  Marcar como pronto
+                </Button>
+              )}
+              {order.status === "ready" && isWaiterView ? (
+                <Button
+                  type="button"
+                  className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                  onClick={() => handleStatusChange(order.id, "awaiting_payment")}
+                  disabled={updateStatusMutation.isPending}
+                >
+                  <WalletCards className="h-4 w-4" />
+                  Aguardando pagamento
+                </Button>
+              ) : null}
+              {order.status === "awaiting_payment" && isWaiterView ? (
+                <Button
+                  type="button"
+                  className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                  onClick={() => openPaymentModal(order)}
+                  disabled={updateStatusMutation.isPending}
+                >
+                  <PackageCheck className="h-4 w-4" />
+                  Registrar pagamento e encerrar
+                </Button>
+              ) : null}
+              {order.status === "ready" && !isWaiterView ? (
+                <div className="rounded-2xl border border-border/70 bg-background/35 px-4 py-3 text-sm text-muted-foreground sm:col-span-2">
+                  Aguardando atendimento do garcom para seguir ao pagamento da mesa.
+                </div>
+              ) : null}
+              {order.status === "awaiting_payment" && !isWaiterView ? (
+                <div className="rounded-2xl border border-border/70 bg-background/35 px-4 py-3 text-sm text-muted-foreground sm:col-span-2">
+                  Pagamento aguardando registro no painel do garcom.
+                </div>
+              ) : null}
             </div>
 
             <Button
@@ -1029,7 +1168,7 @@ export default function KitchenPanel() {
       </div>
 
       <main className="container mx-auto space-y-6 py-6 md:space-y-8 md:py-8">
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-6">
           <Card className="fogareiro-admin-metric border-border/70 bg-card/90">
             <CardContent className="p-4 sm:p-5">
               <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
@@ -1070,13 +1209,23 @@ export default function KitchenPanel() {
               </p>
             </CardContent>
           </Card>
-          <Card className="fogareiro-admin-metric col-span-2 border-border/70 bg-card/90 lg:col-span-1">
+          <Card className="fogareiro-admin-metric border-border/70 bg-card/90">
             <CardContent className="p-4 sm:p-5">
               <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
                 Prontos
               </p>
               <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
                 {stats.readyOrders}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="fogareiro-admin-metric col-span-2 border-border/70 bg-card/90 lg:col-span-1">
+            <CardContent className="p-4 sm:p-5">
+              <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                Pagamento
+              </p>
+              <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
+                {stats.awaitingPaymentOrders}
               </p>
             </CardContent>
           </Card>
@@ -1224,8 +1373,8 @@ export default function KitchenPanel() {
                 <p>Admin e cozinha recebem alerta e podem aceitar o pedido.</p>
                 <p>
                   {isWaiterView
-                    ? "Voce pode abrir pedido presencial manual, editar a comanda e acompanhar o andamento da cozinha."
-                    : "Somente o garcom pode abrir pedido presencial manual, sempre com mesa, nome e telefone."}
+                    ? "Voce pode abrir pedido presencial manual, editar a comanda, registrar pagamento e encerrar a mesa."
+                    : "Somente o garcom pode abrir pedido presencial manual e registrar a etapa final de pagamento da mesa."}
                 </p>
               </CardContent>
             </Card>
@@ -1574,6 +1723,72 @@ export default function KitchenPanel() {
                   disabled={updateDetailsMutation.isPending}
                 >
                   {updateDetailsMutation.isPending ? "Salvando..." : "Salvar alteracoes"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isPaymentModalOpen} onOpenChange={(open) => (open ? setIsPaymentModalOpen(true) : closePaymentModal())}>
+          <DialogContent className="max-h-[calc(100dvh-1rem)] max-w-[min(620px,calc(100vw-1rem))] border-border/70 bg-card/98 sm:max-w-[min(620px,calc(100vw-2rem))]">
+            <DialogHeader className="pr-8">
+              <DialogTitle>
+                {paymentOrder ? `Recebimento do pedido #${paymentOrder.id}` : "Registrar pagamento"}
+              </DialogTitle>
+              <DialogDescription>
+                Informe como o pagamento foi recebido na mesa para encerrar a comanda com rastreabilidade.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleFinalizePayment} className="space-y-4">
+              {paymentOrder ? (
+                <div className="rounded-2xl border border-border/70 bg-background/35 p-4 text-sm text-muted-foreground">
+                  <p className="font-semibold text-foreground">{paymentOrder.customerName}</p>
+                  <p className="mt-1">
+                    {paymentOrder.tableNumber ? `Mesa ${paymentOrder.tableNumber}` : "Sem mesa vinculada"} • {formatPrice(paymentOrder.total)}
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-foreground">Forma de pagamento</p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {(["pix", "card", "cash"] as const).map((method) => (
+                    <Button
+                      key={method}
+                      type="button"
+                      variant={paymentMethod === method ? "default" : "outline"}
+                      className={paymentMethod === method ? "bg-accent text-accent-foreground" : ""}
+                      onClick={() => setPaymentMethod(method)}
+                    >
+                      {PAYMENT_METHOD_LABEL[method]}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold">Observacao do recebimento</label>
+                <textarea
+                  value={paymentNotes}
+                  onChange={(event) => setPaymentNotes(event.target.value)}
+                  rows={4}
+                  placeholder="Ex: pago em duas etapas, troco para 100, mesa liberada pelo garcom..."
+                  className="w-full rounded-lg border border-input bg-background p-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" onClick={closePaymentModal}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                  disabled={updateStatusMutation.isPending}
+                >
+                  <WalletCards className="h-4 w-4" />
+                  {updateStatusMutation.isPending ? "Salvando..." : "Confirmar pagamento e encerrar"}
                 </Button>
               </div>
             </form>

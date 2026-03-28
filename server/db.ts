@@ -67,6 +67,13 @@ type UpdateOrderDetailsPayload = {
   items: OrderItemPayload[];
 };
 
+type UpdateOrderStatusMeta = {
+  estimatedReadyMinutes?: number | null;
+  paymentMethod?: string | null;
+  paymentNotes?: string | null;
+  paidAt?: Date | null;
+};
+
 type LocalUserPayload = {
   name: string;
   email: string;
@@ -208,6 +215,15 @@ async function ensureAppSchema(sql: postgres.Sql) {
   `;
 
   await sql`
+    do $$
+    begin
+      alter type public.order_status add value if not exists 'awaiting_payment' before 'delivered';
+    exception
+      when duplicate_object then null;
+    end $$;
+  `;
+
+  await sql`
     create table if not exists public.categories (
       id bigserial primary key,
       name varchar(120) not null unique,
@@ -265,6 +281,9 @@ async function ensureAppSchema(sql: postgres.Sql) {
       status public.order_status not null default 'new',
       "tableId" bigint references public.dining_tables(id) on delete set null,
       "estimatedReadyMinutes" integer,
+      "paymentMethod" varchar(20),
+      "paymentNotes" text,
+      "paidAt" timestamptz,
       notes text,
       "guestCount" integer,
       "reservationAt" timestamptz,
@@ -282,6 +301,21 @@ async function ensureAppSchema(sql: postgres.Sql) {
   await sql`
     alter table public.orders
     add column if not exists "estimatedReadyMinutes" integer
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "paymentMethod" varchar(20)
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "paymentNotes" text
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "paidAt" timestamptz
   `;
 
   await sql`
@@ -794,7 +828,7 @@ export async function getActiveDiningTables() {
   const activeOrders = await db
     .select({ tableId: orders.tableId })
     .from(orders)
-    .where(inArray(orders.status, ["pending", "new", "preparing", "ready"]));
+    .where(inArray(orders.status, ["pending", "new", "preparing", "ready", "awaiting_payment"]));
 
   const occupiedTableIds = new Set(
     activeOrders
@@ -829,7 +863,7 @@ export async function getDiningTableByPublicToken(
       .where(
         and(
           eq(orders.tableId, Number(table.id)),
-          inArray(orders.status, ["pending", "new", "preparing", "ready"])
+          inArray(orders.status, ["pending", "new", "preparing", "ready", "awaiting_payment"])
         )
       )
       .limit(1);
@@ -983,7 +1017,7 @@ export async function updateOrderStatus(id: number, status: InsertOrder["status"
 export async function updateOrderStatusWithMeta(
   id: number,
   status: InsertOrder["status"],
-  estimatedReadyMinutes?: number | null
+  meta: UpdateOrderStatusMeta = {}
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -993,7 +1027,10 @@ export async function updateOrderStatusWithMeta(
     .set({
       status,
       estimatedReadyMinutes:
-        estimatedReadyMinutes === undefined ? undefined : estimatedReadyMinutes ?? null,
+        meta.estimatedReadyMinutes === undefined ? undefined : meta.estimatedReadyMinutes ?? null,
+      paymentMethod: meta.paymentMethod === undefined ? undefined : meta.paymentMethod ?? null,
+      paymentNotes: meta.paymentNotes === undefined ? undefined : meta.paymentNotes ?? null,
+      paidAt: meta.paidAt === undefined ? undefined : meta.paidAt ?? null,
       updatedAt: new Date(),
     })
     .where(eq(orders.id, id));

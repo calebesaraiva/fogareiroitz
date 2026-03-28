@@ -25,6 +25,7 @@ export const orderStatusEnum = pgEnum("order_status", [
   "new",
   "preparing",
   "ready",
+  "awaiting_payment",
   "delivered",
   "cancelled",
 ]);
@@ -101,6 +102,9 @@ export const orders = pgTable("orders", {
   status: orderStatusEnum("status").default("new").notNull(),
   tableId: integer("tableId").references(() => diningTables.id),
   estimatedReadyMinutes: integer("estimatedReadyMinutes"),
+  paymentMethod: varchar("paymentMethod", { length: 20 }),
+  paymentNotes: text("paymentNotes"),
+  paidAt: timestamp("paidAt", { mode: "date" }),
   notes: text("notes"),
   guestCount: integer("guestCount"),
   reservationAt: timestamp("reservationAt", { mode: "date" }),

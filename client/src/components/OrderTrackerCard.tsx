@@ -12,6 +12,7 @@ const STATUS_LABEL: Record<string, string> = {
   new: "Pedido aceito",
   preparing: "Em preparo",
   ready: "Pronto",
+  awaiting_payment: "Aguardando pagamento",
   delivered: "Entregue",
   cancelled: "Cancelado",
 };
@@ -21,6 +22,7 @@ const TRACK_STEPS = [
   { key: "new", label: "Aceito" },
   { key: "preparing", label: "Em preparo" },
   { key: "ready", label: "Pronto" },
+  { key: "awaiting_payment", label: "Pagamento" },
   { key: "delivered", label: "Entregue" },
 ];
 
