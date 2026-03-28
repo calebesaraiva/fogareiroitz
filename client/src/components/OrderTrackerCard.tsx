@@ -26,6 +26,12 @@ const TRACK_STEPS = [
   { key: "delivered", label: "Entregue" },
 ];
 
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  pix: "Pix",
+  card: "Cartao",
+  cash: "Dinheiro",
+};
+
 const RESTAURANT_CNPJ = "14.218.538/0001-81";
 const RESTAURANT_ADDRESS =
   "Av. Pedro Neiva de Santana, 775 - Camacari, Imperatriz - MA, 65919-555";
@@ -291,6 +297,26 @@ export default function OrderTrackerCard() {
               <div class="line"><span>Codigo</span><strong>${order.trackingCode}</strong></div>
             </div>
 
+            ${
+              order.paymentMethod || order.paymentNotes
+                ? `
+            <div class="section">
+              <div class="label">Pagamento</div>
+              ${
+                order.paymentMethod
+                  ? `<div class="line"><span>Forma</span><strong>${PAYMENT_METHOD_LABEL[order.paymentMethod] || order.paymentMethod}</strong></div>`
+                  : ""
+              }
+              ${
+                order.paymentNotes
+                  ? `<p class="meta">${order.paymentNotes}</p>`
+                  : ""
+              }
+            </div>
+            `
+                : ""
+            }
+
             <div class="section">
               <div class="label">Pedido</div>
               ${itemsMarkup}
@@ -430,6 +456,10 @@ export default function OrderTrackerCard() {
             <div className="text-sm text-muted-foreground">
               <p>Codigo: {order.trackingCode}</p>
               <p>Status final: {STATUS_LABEL[order.status] || order.status}</p>
+              {order.paymentMethod ? (
+                <p>Pagamento: {PAYMENT_METHOD_LABEL[order.paymentMethod] || order.paymentMethod}</p>
+              ) : null}
+              {order.paymentNotes ? <p>Obs. pagamento: {order.paymentNotes}</p> : null}
               {order.items.length > 0 ? (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs uppercase tracking-[0.2em] text-accent/90">
