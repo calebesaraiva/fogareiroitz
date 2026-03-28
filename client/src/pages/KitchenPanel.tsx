@@ -1747,7 +1747,7 @@ export default function KitchenPanel() {
             </DialogHeader>
 
             <form onSubmit={handleCreateInternalOrder} className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-3 sm:gap-4">
-              <div className="fogareiro-scrollbar grid min-h-0 gap-3 overflow-y-auto pr-1 sm:pr-2 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <div className="fogareiro-scrollbar grid min-h-0 gap-3 overflow-y-auto pr-1 pb-24 sm:pr-2 sm:pb-2 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-accent/25 bg-[linear-gradient(180deg,rgba(255,164,135,0.08),rgba(255,255,255,0.02))] p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -1848,7 +1848,7 @@ export default function KitchenPanel() {
                     </div>
 
                     <div className="mt-3 rounded-2xl border border-border/70 bg-background/30 p-2">
-                      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                      <div className="mb-2 flex flex-col gap-1 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                           Resultados
                         </p>
@@ -1857,7 +1857,7 @@ export default function KitchenPanel() {
                         </span>
                       </div>
 
-                      <div className="fogareiro-scrollbar max-h-[17.5rem] space-y-2 overflow-y-auto pr-1">
+                      <div className="fogareiro-scrollbar max-h-[14rem] space-y-2 overflow-y-auto pr-1 sm:max-h-[17.5rem]">
                         {filteredProducts.length === 0 ? (
                           <div className="rounded-xl border border-dashed border-border/70 px-3 py-4 text-sm text-muted-foreground">
                             Nenhum item encontrado com esse nome.
@@ -1911,7 +1911,7 @@ export default function KitchenPanel() {
 
                     <Button
                       type="button"
-                      className="mt-3 h-11 w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                      className="mt-3 h-11 w-full gap-2 bg-accent text-accent-foreground shadow-[0_12px_24px_rgba(0,0,0,0.18)] hover:bg-accent/90"
                       onClick={addDraftItem}
                     >
                       <Plus className="h-4 w-4" />
@@ -1983,7 +1983,7 @@ export default function KitchenPanel() {
                 </div>
               </div>
 
-              <div className="sticky bottom-0 -mx-3 border-t border-border/70 bg-card/98 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:pt-0 sm:pb-0">
+              <div className="sticky bottom-0 -mx-3 border-t border-border/70 bg-card/98/95 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:pt-0 sm:pb-0 sm:backdrop-blur-none">
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                   <Button type="button" variant="outline" className="h-11" onClick={() => setIsCreateInternalOpen(false)}>
                     Cancelar
