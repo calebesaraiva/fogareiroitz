@@ -1,0 +1,103 @@
+FOGAREIRO ITZ RESTAURANTE
+Guia rapido de acesso e operacao
+
+1. COMO LIGAR O SISTEMA
+- Abra a pasta do projeto
+- Rode no PowerShell: npm.cmd run dev
+- Se a porta 3000 estiver ocupada, ele pode abrir em 3001
+
+2. PAGINAS DO SISTEMA
+- Catalogo do cliente: http://localhost:3001/
+- Carrinho / fechamento do pedido: http://localhost:3001/carrinho
+- Painel administrativo: http://localhost:3001/admin
+- Painel da cozinha: http://localhost:3001/cozinha
+- Tela de login: http://localhost:3001/login
+
+3. ACESSO AO PAINEL
+- No estado atual, nao existe senha local fixa
+- O projeto esta com admin local liberado automaticamente quando o OAuth nao esta configurado
+- Isso significa que, na sua maquina local, /admin e /cozinha abrem direto
+- Usuario exibido atualmente: Administrador Local
+
+4. COMO EDITAR O CARDAPIO
+- Entre em /admin
+- Clique em "Adicionar novo item" para cadastrar produto
+- Para editar, clique em "Editar" no card do produto
+- Para ocultar do catalogo, clique em "Ocultar"
+- Para reativar, clique em "Ativar"
+- Para remover do cardapio, clique em "Remover do cardapio"
+- Voce pode alterar:
+  nome
+  categoria
+  preco
+  descricao
+  ingredientes / observacoes internas
+  imagem por URL
+  imagem por arquivo
+
+5. COMO FUNCIONAM OS PEDIDOS
+- O cliente fecha o pedido dentro do sistema
+- O pedido nao vai mais para o WhatsApp do cliente
+- O pedido entra no banco e aparece no painel da cozinha
+- Tipos de atendimento:
+  consumir no local
+  retirada
+  reserva
+
+6. REGRAS DO CHECKOUT
+- Consumir no local:
+  pede nome e mesa
+- Retirada:
+  pede nome e telefone
+- Reserva:
+  pede nome, telefone, data/hora e quantidade de pessoas
+
+7. COMO USAR O PAINEL DA COZINHA
+- Entre em /cozinha
+- Os pedidos aparecem em cards
+- Cada card mostra:
+  nome do cliente
+  tipo do pedido
+  mesa quando existir
+  telefone quando existir
+  itens
+  observacoes
+  total
+  horario
+- Status disponiveis:
+  Novo
+  Em preparo
+  Pronto
+  Entregue
+  Cancelado
+
+8. MESAS
+- O sistema criou 20 mesas automaticamente
+- Numeracao atual: Mesa 1 ate Mesa 20
+
+9. BANCO DE DADOS
+- Banco: Supabase Postgres
+- Tabelas principais:
+  users
+  categories
+  products
+  dining_tables
+  orders
+  order_items
+
+10. ARQUIVOS IMPORTANTES
+- Logo do restaurante: client/public/fogareiro-logo.png
+- Configuracao principal: .env
+- Schema SQL do banco: supabase/schema.sql
+
+11. PONTOS IMPORTANTES
+- Para atualizar visual no navegador, use Ctrl+F5
+- Se mudar .env, reinicie o servidor
+- O aviso automatico no WhatsApp do dono ainda nao foi integrado
+- Hoje o pedido fica 100% no sistema interno
+
+12. RESUMO RAPIDO
+- Cliente pede em /
+- Pedido fecha em /carrinho
+- Admin gerencia produtos em /admin
+- Cozinha acompanha pedidos em /cozinha
