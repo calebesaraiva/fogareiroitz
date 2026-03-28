@@ -22,6 +22,7 @@ import {
   PackageCheck,
   Plus,
   RefreshCcw,
+  Search,
   ShieldCheck,
   WalletCards,
 } from "lucide-react";
@@ -70,6 +71,7 @@ type ProductOption = {
   name: string;
   price: number;
   categoryName: string | null;
+  imageUrl: string | null;
 };
 
 type OrderStatus = KitchenOrder["status"];
@@ -100,6 +102,9 @@ const PAYMENT_METHOD_LABEL: Record<NonNullable<KitchenOrder["paymentMethod"]>, s
   card: "Cartao",
   cash: "Dinheiro",
 };
+
+const FALLBACK_PRODUCT_IMAGE =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='100%25' height='100%25' fill='%23322224'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23f2d2c5' font-family='Arial' font-size='34'>Fogareiro</text></svg>";
 
 const canAccessKitchenPanel = (role?: string | null) =>
   role === "kitchen" || role === "waiter";
@@ -186,6 +191,7 @@ export default function KitchenPanel() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedTableId, setSelectedTableId] = useState("");
   const [notes, setNotes] = useState("");
+  const [productSearch, setProductSearch] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [draftQuantity, setDraftQuantity] = useState("1");
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
@@ -250,6 +256,20 @@ export default function KitchenPanel() {
       })),
     [productsQuery.data]
   );
+
+  const filteredProducts = useMemo(() => {
+    const normalizedSearch = productSearch.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return products.slice(0, 8);
+    }
+
+    return products
+      .filter((product) =>
+        [product.name, product.categoryName ?? ""].join(" ").toLowerCase().includes(normalizedSearch)
+      )
+      .slice(0, 10);
+  }, [productSearch, products]);
 
   useEffect(() => {
     pendingAlertRef.current = createLoopingAlert();
@@ -606,6 +626,7 @@ export default function KitchenPanel() {
     });
 
     setSelectedProductId("");
+    setProductSearch("");
     setDraftQuantity("1");
   };
 
@@ -1308,6 +1329,19 @@ export default function KitchenPanel() {
           </section>
         )}
 
+        {canCreateInternal ? (
+          <div className="pointer-events-none fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 sm:hidden">
+            <Button
+              type="button"
+              onClick={() => setIsCreateInternalOpen(true)}
+              className="pointer-events-auto h-14 rounded-full border border-accent/30 bg-[linear-gradient(135deg,rgba(255,150,126,0.98),rgba(233,111,86,0.98))] px-5 text-[15px] font-semibold text-accent-foreground shadow-[0_18px_40px_rgba(0,0,0,0.28)] hover:scale-[1.01] hover:bg-accent"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Novo pedido
+            </Button>
+          </div>
+        ) : null}
+
         <section className="rounded-[1.75rem] border border-border/70 bg-card/90 p-4 shadow-[0_18px_46px_rgba(0,0,0,0.14)] sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -1715,8 +1749,29 @@ export default function KitchenPanel() {
             <form onSubmit={handleCreateInternalOrder} className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-3 sm:gap-4">
               <div className="fogareiro-scrollbar grid min-h-0 gap-3 overflow-y-auto pr-1 sm:pr-2 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                 <div className="space-y-4">
+                  <div className="rounded-2xl border border-accent/25 bg-[linear-gradient(180deg,rgba(255,164,135,0.08),rgba(255,255,255,0.02))] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent/90">
+                          Comece por aqui
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Identifique a mesa e adicione os itens do atendimento em poucos toques.
+                        </p>
+                      </div>
+                      <div className="rounded-full border border-accent/20 bg-accent/10 p-2 text-accent">
+                        <ChefHat className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                    <p className="mb-3 text-sm font-semibold text-foreground">Dados da mesa</p>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">1. Dados da mesa</p>
+                      <span className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                        obrigatorio
+                      </span>
+                    </div>
                     <div className="space-y-3">
                       <div>
                         <label className="mb-2 block text-sm font-semibold">
@@ -1759,8 +1814,8 @@ export default function KitchenPanel() {
                         <textarea
                           value={notes}
                           onChange={(event) => setNotes(event.target.value)}
-                          rows={4}
-                          placeholder="Detalhes do atendimento interno"
+                          rows={3}
+                          placeholder="Opcional: aniversariante, preferencia da mesa, detalhes do atendimento..."
                           className="w-full rounded-lg border border-input bg-background p-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
                         />
                       </div>
@@ -1768,20 +1823,20 @@ export default function KitchenPanel() {
                   </div>
 
                   <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                    <p className="mb-3 text-sm font-semibold text-foreground">Adicionar item</p>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">2. Adicionar item</p>
+                      <span className="text-xs text-muted-foreground">Pesquise e toque no item</span>
+                    </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_110px]">
-                      <select
-                        value={selectedProductId}
-                        onChange={(event) => setSelectedProductId(event.target.value)}
-                        className="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="">Selecione um item do cardapio</option>
-                        {products.map((product) => (
-                          <option key={product.id} value={product.id}>
-                            {product.name} - {formatPrice(product.price)}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={productSearch}
+                          onChange={(event) => setProductSearch(event.target.value)}
+                          placeholder="Digite o nome do produto"
+                          className="h-12 pl-10"
+                        />
+                      </div>
                       <Input
                         type="number"
                         min="1"
@@ -1791,13 +1846,76 @@ export default function KitchenPanel() {
                         className="h-12"
                       />
                     </div>
+
+                    <div className="mt-3 rounded-2xl border border-border/70 bg-background/30 p-2">
+                      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                          Resultados
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {filteredProducts.length} exibido(s)
+                        </span>
+                      </div>
+
+                      <div className="fogareiro-scrollbar max-h-[17.5rem] space-y-2 overflow-y-auto pr-1">
+                        {filteredProducts.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-border/70 px-3 py-4 text-sm text-muted-foreground">
+                            Nenhum item encontrado com esse nome.
+                          </div>
+                        ) : (
+                          filteredProducts.map((product) => {
+                            const isSelected = selectedProductId === String(product.id);
+
+                            return (
+                              <button
+                                key={product.id}
+                                type="button"
+                                onClick={() => setSelectedProductId(String(product.id))}
+                                className={`flex w-full items-center gap-3 rounded-2xl border p-2 text-left transition ${
+                                  isSelected
+                                    ? "border-accent/50 bg-accent/10 shadow-[0_10px_25px_rgba(0,0,0,0.12)]"
+                                    : "border-border/70 bg-background/55 hover:border-accent/30 hover:bg-background/75"
+                                }`}
+                              >
+                                <img
+                                  src={product.imageUrl || FALLBACK_PRODUCT_IMAGE}
+                                  alt={product.name}
+                                  className="h-14 w-14 rounded-xl object-cover"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold text-foreground">
+                                    {product.name}
+                                  </p>
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {product.categoryName || "Cardapio"}
+                                  </p>
+                                  <p className="mt-1 text-sm font-semibold text-accent">
+                                    {formatPrice(product.price)}
+                                  </p>
+                                </div>
+                                <div
+                                  className={`rounded-full px-3 py-2 text-xs font-semibold ${
+                                    isSelected
+                                      ? "bg-accent text-accent-foreground"
+                                      : "border border-border/70 bg-background/70 text-foreground"
+                                  }`}
+                                >
+                                  {isSelected ? "Selecionado" : "Escolher"}
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
                     <Button
                       type="button"
-                      variant="outline"
-                      className="mt-3 h-11 w-full"
+                      className="mt-3 h-11 w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
                       onClick={addDraftItem}
                     >
-                      Adicionar ao pedido
+                      <Plus className="h-4 w-4" />
+                      Adicionar item selecionado
                     </Button>
                   </div>
                 </div>
@@ -1805,7 +1923,7 @@ export default function KitchenPanel() {
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-foreground">Itens da comanda</p>
+                      <p className="text-sm font-semibold text-foreground">3. Itens da comanda</p>
                       <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
                         {draftItems.length} item(ns)
                       </span>
@@ -1849,9 +1967,14 @@ export default function KitchenPanel() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl bg-muted/55 p-4">
+                  <div className="rounded-2xl border border-accent/20 bg-[linear-gradient(180deg,rgba(255,164,135,0.12),rgba(255,255,255,0.03))] p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-muted-foreground">Total interno</span>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Resumo do pedido</p>
+                        <p className="text-xs text-muted-foreground">
+                          Revise o total antes de confirmar a comanda.
+                        </p>
+                      </div>
                       <span className="text-xl font-bold text-accent">
                         {formatPrice(internalTotal)}
                       </span>
