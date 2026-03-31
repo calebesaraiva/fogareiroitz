@@ -17,6 +17,13 @@ type ShowcaseSlide = {
   isActive: boolean;
 };
 
+type ShowcasePreviewPayload = {
+  showcaseTitle?: string;
+  showcaseSubtitle?: string;
+  showcaseSlideSeconds?: number;
+  showcaseSlides?: ShowcaseSlide[];
+};
+
 const STATUS_LABEL: Record<ShowcaseOrder["status"], string> = {
   pending: "Aguardando aprovacao",
   new: "Aceito",
@@ -43,20 +50,27 @@ export default function ShowcaseBoard() {
     refetchInterval: 5000,
   });
 
-  const previewSettings = useMemo(() => {
+  const [previewSettings, setPreviewSettings] = useState<ShowcasePreviewPayload | null>(() => {
     if (!isPreviewMode || typeof window === "undefined") return null;
-    try {
-      const raw = localStorage.getItem("fogareiro_showcase_preview");
-      if (!raw) return null;
-      return JSON.parse(raw) as {
-        showcaseTitle?: string;
-        showcaseSubtitle?: string;
-        showcaseSlideSeconds?: number;
-        showcaseSlides?: ShowcaseSlide[];
-      };
-    } catch {
-      return null;
-    }
+    const selfPreview = (window as Window & { __fogareiroShowcasePreview?: ShowcasePreviewPayload })
+      .__fogareiroShowcasePreview;
+    const openerPreview = (
+      window.opener as (Window & { __fogareiroShowcasePreview?: ShowcasePreviewPayload }) | null
+    )?.__fogareiroShowcasePreview;
+    return selfPreview ?? openerPreview ?? null;
+  });
+
+  useEffect(() => {
+    if (!isPreviewMode) return;
+
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "fogareiro-showcase-preview") return;
+      setPreviewSettings(event.data.payload as ShowcasePreviewPayload);
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
   }, [isPreviewMode]);
 
   const showcaseSlides = useMemo(() => {

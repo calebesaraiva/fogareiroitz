@@ -888,8 +888,16 @@ export default function AdminPanel() {
   const handlePreviewShowcase = () => {
     try {
       const payload = buildShowcasePayload();
-      localStorage.setItem("fogareiro_showcase_preview", JSON.stringify(payload));
-      window.open("/painel-clientes?preview=1", "_blank");
+      (window as Window & { __fogareiroShowcasePreview?: unknown }).__fogareiroShowcasePreview = payload;
+      const previewWindow = window.open("/painel-clientes?preview=1", "_blank");
+      if (previewWindow) {
+        setTimeout(() => {
+          previewWindow.postMessage(
+            { type: "fogareiro-showcase-preview", payload },
+            window.location.origin
+          );
+        }, 250);
+      }
     } catch (error) {
       console.error(error);
       toast.error("Nao foi possivel abrir o preview");
@@ -915,7 +923,6 @@ export default function AdminPanel() {
         { message: "Publicando album da TV" }
       );
       await settingsQuery.refetch();
-      localStorage.removeItem("fogareiro_showcase_preview");
       setIsShowcaseAlbumOpen(false);
       window.open(`/painel-clientes?v=${Date.now()}`, "_blank");
       toast.success("Album publicado com sucesso");
