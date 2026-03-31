@@ -807,6 +807,23 @@ export default function AdminPanel() {
     setShowcaseSlidesDraft((current) => current.map((slide) => (slide.id === id ? updater(slide) : slide)));
   };
 
+  const handleShowcaseImageUpload = (slideId: string, event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === "string") {
+        updateShowcaseSlide(slideId, (current) => ({
+          ...current,
+          imageUrl: result,
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const moveShowcaseSlide = (id: string, direction: "up" | "down") => {
     setShowcaseSlidesDraft((current) => {
       const index = current.findIndex((slide) => slide.id === id);
@@ -822,6 +839,11 @@ export default function AdminPanel() {
 
   const handleSaveShowcaseAlbum = async () => {
     const payload = buildShowcasePayload();
+    const activeSlides = payload.showcaseSlides.filter((slide) => slide.isActive);
+    if (activeSlides.length === 0) {
+      toast.error("Adicione pelo menos 1 slide ativo com foto para publicar na TV");
+      return;
+    }
 
     try {
       await withLoading(
@@ -876,6 +898,11 @@ export default function AdminPanel() {
 
   const handlePublishShowcaseNow = async () => {
     const payload = buildShowcasePayload();
+    const activeSlides = payload.showcaseSlides.filter((slide) => slide.isActive);
+    if (activeSlides.length === 0) {
+      toast.error("Adicione pelo menos 1 slide ativo com foto para publicar na TV");
+      return;
+    }
     try {
       await withLoading(
         () =>
@@ -888,6 +915,7 @@ export default function AdminPanel() {
         { message: "Publicando album da TV" }
       );
       await settingsQuery.refetch();
+      localStorage.removeItem("fogareiro_showcase_preview");
       setIsShowcaseAlbumOpen(false);
       window.open(`/painel-clientes?v=${Date.now()}`, "_blank");
       toast.success("Album publicado com sucesso");
@@ -1890,13 +1918,33 @@ export default function AdminPanel() {
                                 updateShowcaseSlide(slide.id, (current) => ({ ...current, title: event.target.value }))
                               }
                             />
-                            <Input
-                              placeholder="URL da imagem (https://...)"
-                              value={slide.imageUrl}
-                              onChange={(event) =>
-                                updateShowcaseSlide(slide.id, (current) => ({ ...current, imageUrl: event.target.value }))
-                              }
-                            />
+                            <div className="flex flex-wrap gap-2">
+                              <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-muted/30">
+                                <ImagePlus className="h-4 w-4" />
+                                Enviar foto
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(event) => handleShowcaseImageUpload(slide.id, event)}
+                                />
+                              </label>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  updateShowcaseSlide(slide.id, (current) => ({
+                                    ...current,
+                                    imageUrl: "",
+                                  }))
+                                }
+                              >
+                                Remover foto
+                              </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Foto carregada direto do seu computador. Nao precisa link.
+                            </p>
                           </div>
                           <div>
                             <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
