@@ -22,7 +22,55 @@ let _client: postgres.Sql | null = null;
 let _schemaReady: Promise<void> | null = null;
 const DEFAULT_AUTO_PREPARING_PERCENT = 15;
 const DEFAULT_AUTO_DELIVERED_GRACE_MINUTES = 8;
+const DEFAULT_SHOWCASE_SLIDE_SECONDS = 6;
+const DEFAULT_SHOWCASE_TITLE = "Fogareiro ITZ Restaurante";
+const DEFAULT_SHOWCASE_SUBTITLE = "Cardapio da casa";
 const DEFAULT_SERVICE_FEE_PERCENT = 10;
+
+type ShowcaseSlide = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  durationSeconds: number;
+  isActive: boolean;
+};
+
+function normalizeShowcaseSlides(input: unknown): ShowcaseSlide[] {
+  if (!Array.isArray(input)) return [];
+
+  return input
+    .map((slide, index) => {
+      if (!slide || typeof slide !== "object") return null;
+      const raw = slide as Record<string, unknown>;
+      const imageUrl = String(raw.imageUrl ?? "").trim();
+      if (!imageUrl) return null;
+
+      const title = String(raw.title ?? "").trim() || `Slide ${index + 1}`;
+      const durationSeconds = Math.min(
+        30,
+        Math.max(3, Number(raw.durationSeconds ?? DEFAULT_SHOWCASE_SLIDE_SECONDS) || DEFAULT_SHOWCASE_SLIDE_SECONDS)
+      );
+
+      return {
+        id: String(raw.id ?? `slide-${index + 1}`),
+        title,
+        imageUrl,
+        durationSeconds,
+        isActive: raw.isActive !== false,
+      } as ShowcaseSlide;
+    })
+    .filter((slide): slide is ShowcaseSlide => Boolean(slide))
+    .slice(0, 60);
+}
+
+function parseShowcaseSlidesJson(value: string | null | undefined) {
+  if (!value) return [];
+  try {
+    return normalizeShowcaseSlides(JSON.parse(value));
+  } catch {
+    return [];
+  }
+}
 
 const ORDER_STATUS_RANK: Record<NonNullable<InsertOrder["status"]>, number> = {
   pending: 0,
@@ -127,6 +175,9 @@ async function getAutoStatusConfig(db: ReturnType<typeof drizzle>) {
       .values({
         autoPreparingPercent: DEFAULT_AUTO_PREPARING_PERCENT,
         autoDeliveredGraceMinutes: DEFAULT_AUTO_DELIVERED_GRACE_MINUTES,
+        showcaseSlideSeconds: DEFAULT_SHOWCASE_SLIDE_SECONDS,
+        showcaseTitle: DEFAULT_SHOWCASE_TITLE,
+        showcaseSubtitle: DEFAULT_SHOWCASE_SUBTITLE,
       })
       .returning();
 
@@ -456,8 +507,32 @@ async function ensureAppSchema(sql: postgres.Sql) {
       id bigserial primary key,
       "autoPreparingPercent" integer not null default 15,
       "autoDeliveredGraceMinutes" integer not null default 8,
+      "showcaseSlidesJson" text,
+      "showcaseSlideSeconds" integer not null default 6,
+      "showcaseTitle" varchar(160),
+      "showcaseSubtitle" varchar(160),
       "updatedAt" timestamptz not null default now()
     )
+  `;
+
+  await sql`
+    alter table public.app_settings
+    add column if not exists "showcaseSlidesJson" text
+  `;
+
+  await sql`
+    alter table public.app_settings
+    add column if not exists "showcaseSlideSeconds" integer not null default 6
+  `;
+
+  await sql`
+    alter table public.app_settings
+    add column if not exists "showcaseTitle" varchar(160)
+  `;
+
+  await sql`
+    alter table public.app_settings
+    add column if not exists "showcaseSubtitle" varchar(160)
   `;
 
   await sql`
@@ -1284,12 +1359,42 @@ export async function closeCashierDay(referenceDate: Date) {
 export async function getAppSettings() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return getAutoStatusConfig(db);
+  const settings = await getAutoStatusConfig(db);
+  const showcaseSlides = parseShowcaseSlidesJson(settings.showcaseSlidesJson);
+  return {
+    ...settings,
+    showcaseSlideSeconds: Number(settings.showcaseSlideSeconds ?? DEFAULT_SHOWCASE_SLIDE_SECONDS),
+    showcaseSlides,
+    showcaseTitle: settings.showcaseTitle || DEFAULT_SHOWCASE_TITLE,
+    showcaseSubtitle: settings.showcaseSubtitle || DEFAULT_SHOWCASE_SUBTITLE,
+  };
+}
+
+export async function getPublicShowcaseSettings() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const settings = await getAutoStatusConfig(db);
+  return {
+    showcaseSlideSeconds: Number(settings.showcaseSlideSeconds ?? DEFAULT_SHOWCASE_SLIDE_SECONDS),
+    showcaseSlides: parseShowcaseSlidesJson(settings.showcaseSlidesJson),
+    showcaseTitle: settings.showcaseTitle || DEFAULT_SHOWCASE_TITLE,
+    showcaseSubtitle: settings.showcaseSubtitle || DEFAULT_SHOWCASE_SUBTITLE,
+  };
 }
 
 export async function updateAppSettings(input: {
   autoPreparingPercent?: number;
   autoDeliveredGraceMinutes?: number;
+  showcaseSlideSeconds?: number;
+  showcaseTitle?: string;
+  showcaseSubtitle?: string;
+  showcaseSlides?: Array<{
+    id?: string;
+    title?: string;
+    imageUrl?: string;
+    durationSeconds?: number;
+    isActive?: boolean;
+  }>;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1303,18 +1408,45 @@ export async function updateAppSettings(input: {
     120,
     Math.max(0, Number(input.autoDeliveredGraceMinutes ?? existing.autoDeliveredGraceMinutes))
   );
+  const showcaseSlideSeconds = Math.min(
+    30,
+    Math.max(3, Number(input.showcaseSlideSeconds ?? existing.showcaseSlideSeconds ?? DEFAULT_SHOWCASE_SLIDE_SECONDS))
+  );
+  const showcaseSlides =
+    input.showcaseSlides !== undefined
+      ? normalizeShowcaseSlides(input.showcaseSlides)
+      : parseShowcaseSlidesJson(existing.showcaseSlidesJson);
+  const showcaseTitle = (input.showcaseTitle ?? existing.showcaseTitle ?? DEFAULT_SHOWCASE_TITLE)
+    .toString()
+    .trim()
+    .slice(0, 160);
+  const showcaseSubtitle = (input.showcaseSubtitle ?? existing.showcaseSubtitle ?? DEFAULT_SHOWCASE_SUBTITLE)
+    .toString()
+    .trim()
+    .slice(0, 160);
 
   await db
     .update(appSettings)
     .set({
       autoPreparingPercent,
       autoDeliveredGraceMinutes,
+      showcaseSlideSeconds,
+      showcaseTitle,
+      showcaseSubtitle,
+      showcaseSlidesJson: JSON.stringify(showcaseSlides),
       updatedAt: new Date(),
     })
     .where(eq(appSettings.id, Number(existing.id)));
 
   const [updated] = await db.select().from(appSettings).where(eq(appSettings.id, Number(existing.id))).limit(1);
-  return updated;
+  const finalSettings = updated ?? existing;
+  return {
+    ...finalSettings,
+    showcaseSlideSeconds: Number(finalSettings.showcaseSlideSeconds ?? DEFAULT_SHOWCASE_SLIDE_SECONDS),
+    showcaseSlides: parseShowcaseSlidesJson(finalSettings.showcaseSlidesJson),
+    showcaseTitle: finalSettings.showcaseTitle || DEFAULT_SHOWCASE_TITLE,
+    showcaseSubtitle: finalSettings.showcaseSubtitle || DEFAULT_SHOWCASE_SUBTITLE,
+  };
 }
 
 export async function updateOrderStatus(id: number, status: InsertOrder["status"]) {

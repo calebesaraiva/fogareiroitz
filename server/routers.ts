@@ -17,6 +17,7 @@ import {
   getAllOrders,
   getAllProducts,
   getAppSettings,
+  getPublicShowcaseSettings,
   getActiveDiningTables,
   getCashierOrders,
   getCashierReport,
@@ -143,11 +144,29 @@ export const appRouter = router({
       if (ctx.user?.role !== "admin") throw new Error("Unauthorized");
       return getAppSettings();
     }),
+    showcasePublic: publicProcedure.query(async () => {
+      return getPublicShowcaseSettings();
+    }),
     update: protectedProcedure
       .input(
         z.object({
           autoPreparingPercent: z.number().int().min(0).max(80).optional(),
           autoDeliveredGraceMinutes: z.number().int().min(0).max(120).optional(),
+          showcaseSlideSeconds: z.number().int().min(3).max(30).optional(),
+          showcaseTitle: z.string().min(1).max(160).optional(),
+          showcaseSubtitle: z.string().min(1).max(160).optional(),
+          showcaseSlides: z
+            .array(
+              z.object({
+                id: z.string().optional(),
+                title: z.string().optional(),
+                imageUrl: z.string().min(1),
+                durationSeconds: z.number().int().min(3).max(30).optional(),
+                isActive: z.boolean().optional(),
+              })
+            )
+            .max(60)
+            .optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {

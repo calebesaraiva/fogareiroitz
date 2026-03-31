@@ -144,6 +144,10 @@ export const appSettings = pgTable("app_settings", {
   id: serial("id").primaryKey(),
   autoPreparingPercent: integer("autoPreparingPercent").default(15).notNull(),
   autoDeliveredGraceMinutes: integer("autoDeliveredGraceMinutes").default(8).notNull(),
+  showcaseSlidesJson: text("showcaseSlidesJson"),
+  showcaseSlideSeconds: integer("showcaseSlideSeconds").default(6).notNull(),
+  showcaseTitle: varchar("showcaseTitle", { length: 160 }),
+  showcaseSubtitle: varchar("showcaseSubtitle", { length: 160 }),
   updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
 });
 

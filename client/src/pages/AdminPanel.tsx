@@ -7,6 +7,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -17,6 +18,8 @@ import { trpc } from "@/lib/trpc";
 import { jsPDF } from "jspdf";
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
   BellRing,
   Boxes,
   BriefcaseBusiness,
@@ -31,6 +34,7 @@ import {
   LayoutDashboard,
   LogOut,
   MapPinned,
+  MonitorPlay,
   Plus,
   QrCode,
   RefreshCcw,
@@ -129,6 +133,14 @@ type TableForm = {
   label: string;
 };
 
+type ShowcaseSlideForm = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  durationSeconds: string;
+  isActive: boolean;
+};
+
 const EMPTY_FORM: ProductForm = {
   name: "",
   categoryName: "",
@@ -152,10 +164,28 @@ const EMPTY_TABLE_FORM: TableForm = {
   label: "",
 };
 
+const EMPTY_SHOWCASE_SLIDE = (): ShowcaseSlideForm => ({
+  id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  title: "",
+  imageUrl: "",
+  durationSeconds: "6",
+  isActive: true,
+});
+
 const FALLBACK_PRODUCT_IMAGE =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='100%25' height='100%25' fill='%23f3efe8'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23725a3a' font-family='Arial' font-size='36'>Sem imagem</text></svg>";
 
 const ORDER_TYPE_LABEL = "Consumir no local";
+const ORDER_STATUS_LABEL: Record<string, string> = {
+  pending: "Aguardando aprovacao",
+  new: "Aceito",
+  preparing: "Em preparo",
+  ready: "Pronto",
+  delivered: "Entregue",
+  cancelled: "Cancelado",
+  awaiting_payment: "Aguardando pagamento",
+  paid: "Pago",
+};
 
 export default function AdminPanel() {
   const { user, loading, isAuthenticated, logout } = useAuth();
@@ -197,6 +227,7 @@ export default function AdminPanel() {
   const [isCreateStaffOpen, setIsCreateStaffOpen] = useState(false);
   const [isManageStaffOpen, setIsManageStaffOpen] = useState(false);
   const [isCreateTableOpen, setIsCreateTableOpen] = useState(false);
+  const [isShowcaseAlbumOpen, setIsShowcaseAlbumOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<ProductForm>(EMPTY_FORM);
   const [staffForm, setStaffForm] = useState<StaffForm>(EMPTY_STAFF_FORM);
@@ -206,6 +237,10 @@ export default function AdminPanel() {
   const [removeFeeByOrderId, setRemoveFeeByOrderId] = useState<Record<number, boolean>>({});
   const [autoPreparingPercent, setAutoPreparingPercent] = useState("15");
   const [autoDeliveredGraceMinutes, setAutoDeliveredGraceMinutes] = useState("8");
+  const [showcaseTitle, setShowcaseTitle] = useState("Fogareiro ITZ Restaurante");
+  const [showcaseSubtitle, setShowcaseSubtitle] = useState("Cardapio da casa");
+  const [showcaseDefaultSeconds, setShowcaseDefaultSeconds] = useState("6");
+  const [showcaseSlidesDraft, setShowcaseSlidesDraft] = useState<ShowcaseSlideForm[]>([]);
   const previousPendingOrderIdsRef = useRef<number[]>([]);
 
   const products = productsQuery.data ?? [];
@@ -343,6 +378,19 @@ export default function AdminPanel() {
     if (!settingsQuery.data) return;
     setAutoPreparingPercent(String(settingsQuery.data.autoPreparingPercent ?? 15));
     setAutoDeliveredGraceMinutes(String(settingsQuery.data.autoDeliveredGraceMinutes ?? 8));
+    setShowcaseTitle(String(settingsQuery.data.showcaseTitle ?? "Fogareiro ITZ Restaurante"));
+    setShowcaseSubtitle(String(settingsQuery.data.showcaseSubtitle ?? "Cardapio da casa"));
+    setShowcaseDefaultSeconds(String(settingsQuery.data.showcaseSlideSeconds ?? 6));
+    const slides = Array.isArray(settingsQuery.data.showcaseSlides)
+      ? settingsQuery.data.showcaseSlides.map((slide, index) => ({
+          id: String(slide.id ?? `slide-${index + 1}`),
+          title: String(slide.title ?? ""),
+          imageUrl: String(slide.imageUrl ?? ""),
+          durationSeconds: String(slide.durationSeconds ?? settingsQuery.data.showcaseSlideSeconds ?? 6),
+          isActive: slide.isActive !== false,
+        }))
+      : [];
+    setShowcaseSlidesDraft(slides);
   }, [settingsQuery.data]);
 
   const formatPrice = (price: number | string) => {
@@ -752,6 +800,103 @@ export default function AdminPanel() {
     }
   };
 
+  const updateShowcaseSlide = (
+    id: string,
+    updater: (slide: ShowcaseSlideForm) => ShowcaseSlideForm
+  ) => {
+    setShowcaseSlidesDraft((current) => current.map((slide) => (slide.id === id ? updater(slide) : slide)));
+  };
+
+  const moveShowcaseSlide = (id: string, direction: "up" | "down") => {
+    setShowcaseSlidesDraft((current) => {
+      const index = current.findIndex((slide) => slide.id === id);
+      if (index < 0) return current;
+      const nextIndex = direction === "up" ? index - 1 : index + 1;
+      if (nextIndex < 0 || nextIndex >= current.length) return current;
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      next.splice(nextIndex, 0, item);
+      return next;
+    });
+  };
+
+  const handleSaveShowcaseAlbum = async () => {
+    const payload = buildShowcasePayload();
+
+    try {
+      await withLoading(
+        () =>
+          updateSettingsMutation.mutateAsync({
+            showcaseSlideSeconds: payload.showcaseSlideSeconds,
+            showcaseTitle: payload.showcaseTitle,
+            showcaseSubtitle: payload.showcaseSubtitle,
+            showcaseSlides: payload.showcaseSlides,
+          }),
+        { message: "Salvando album da TV" }
+      );
+      await settingsQuery.refetch();
+      setIsShowcaseAlbumOpen(false);
+      toast.success("Album da TV atualizado");
+    } catch (error) {
+      console.error(error);
+      toast.error("Nao foi possivel salvar o album da TV");
+    }
+  };
+
+  const buildShowcasePayload = () => {
+    const defaultSeconds = Math.max(3, Math.min(30, Number(showcaseDefaultSeconds) || 6));
+    const slides = showcaseSlidesDraft
+      .map((slide, index) => ({
+        id: slide.id || `slide-${index + 1}`,
+        title: slide.title.trim() || `Slide ${index + 1}`,
+        imageUrl: slide.imageUrl.trim(),
+        durationSeconds: Math.max(3, Math.min(30, Number(slide.durationSeconds) || defaultSeconds)),
+        isActive: slide.isActive,
+      }))
+      .filter((slide) => slide.imageUrl.length > 0);
+
+    return {
+      showcaseSlideSeconds: defaultSeconds,
+      showcaseTitle: showcaseTitle.trim() || "Fogareiro ITZ Restaurante",
+      showcaseSubtitle: showcaseSubtitle.trim() || "Cardapio da casa",
+      showcaseSlides: slides,
+    };
+  };
+
+  const handlePreviewShowcase = () => {
+    try {
+      const payload = buildShowcasePayload();
+      localStorage.setItem("fogareiro_showcase_preview", JSON.stringify(payload));
+      window.open("/painel-clientes?preview=1", "_blank");
+    } catch (error) {
+      console.error(error);
+      toast.error("Nao foi possivel abrir o preview");
+    }
+  };
+
+  const handlePublishShowcaseNow = async () => {
+    const payload = buildShowcasePayload();
+    try {
+      await withLoading(
+        () =>
+          updateSettingsMutation.mutateAsync({
+            showcaseSlideSeconds: payload.showcaseSlideSeconds,
+            showcaseTitle: payload.showcaseTitle,
+            showcaseSubtitle: payload.showcaseSubtitle,
+            showcaseSlides: payload.showcaseSlides,
+          }),
+        { message: "Publicando album da TV" }
+      );
+      await settingsQuery.refetch();
+      setIsShowcaseAlbumOpen(false);
+      window.open(`/painel-clientes?v=${Date.now()}`, "_blank");
+      toast.success("Album publicado com sucesso");
+    } catch (error) {
+      console.error(error);
+      toast.error("Nao foi possivel publicar o album");
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     await pulseLoading("Saindo do painel", 950);
@@ -816,6 +961,14 @@ export default function AdminPanel() {
             >
               <RefreshCcw className="h-4 w-4" />
               Atualizar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsShowcaseAlbumOpen(true)}
+              className="gap-2"
+            >
+              <MonitorPlay className="h-4 w-4" />
+              Editar tela de clientes
             </Button>
             <Button
               variant="outline"
@@ -987,6 +1140,18 @@ export default function AdminPanel() {
             <p className="mt-2 font-semibold text-foreground">Produtos e categorias</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Atualize itens, imagens e destaques da casa.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => scrollToSection("admin-tv")}
+            className="fogareiro-admin-shortcut rounded-[1.45rem] border border-border/70 bg-card/78 p-4 text-left shadow-[0_16px_42px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-accent/35 hover:bg-card"
+          >
+            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Tela da TV</p>
+            <p className="mt-2 font-semibold text-foreground">Album de slides</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Escolha fotos exclusivas e tempo de exibicao.
             </p>
           </button>
 
@@ -1262,6 +1427,51 @@ export default function AdminPanel() {
           </Card>
         </section>
 
+        <section id="admin-tv" className="scroll-mt-28 grid grid-cols-1 gap-6">
+          <Card className={sectionCardClass}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MonitorPlay className="h-5 w-5 text-accent" />
+                Album da TV (separado do cardapio)
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Cadastre fotos exclusivas para a tela do cliente, sem depender das imagens dos pratos.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Slides cadastrados</p>
+                  <p className="mt-2 text-2xl font-bold text-foreground">{showcaseSlidesDraft.length}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Slides ativos</p>
+                  <p className="mt-2 text-2xl font-bold text-accent">
+                    {showcaseSlidesDraft.filter((slide) => slide.isActive && slide.imageUrl.trim()).length}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Tempo padrao</p>
+                  <p className="mt-2 text-2xl font-bold text-foreground">{showcaseDefaultSeconds}s</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() => setIsShowcaseAlbumOpen(true)}
+                  className="bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  Gerenciar album da TV
+                </Button>
+                <Button type="button" variant="outline" onClick={() => window.open("/painel-clientes", "_blank")}>
+                  Abrir painel de clientes
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
         <section id="admin-caixa" className="scroll-mt-28">
           <Card className={sectionCardClass}>
             <CardHeader>
@@ -1314,7 +1524,7 @@ export default function AdminPanel() {
                               Mesa: {order.tableNumber ? `Mesa ${order.tableNumber}` : "Sem mesa"}
                             </p>
                           </div>
-                          <Badge>{order.status}</Badge>
+                          <Badge>{ORDER_STATUS_LABEL[order.status] ?? order.status}</Badge>
                         </div>
 
                         <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-card/55 p-3 text-sm">
@@ -1608,6 +1818,173 @@ export default function AdminPanel() {
               </div>
             </CardContent>
           </Card>
+
+          <Dialog open={isShowcaseAlbumOpen} onOpenChange={setIsShowcaseAlbumOpen}>
+            <DialogContent className="max-h-[calc(100dvh-1rem)] max-w-[min(1080px,calc(100vw-1rem))] border-border/70 bg-card/98 sm:max-w-[min(1080px,calc(100vw-2rem))]">
+              <DialogHeader className="pr-8">
+                <DialogTitle>Album da TV</DialogTitle>
+                <DialogDescription>
+                  Adicione fotos exclusivas para o slideshow da tela dos clientes.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="fogareiro-scrollbar max-h-[calc(100dvh-16rem)] space-y-4 overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Tempo padrao (segundos)</label>
+                    <Input
+                      type="number"
+                      min="3"
+                      max="30"
+                      value={showcaseDefaultSeconds}
+                      onChange={(event) => setShowcaseDefaultSeconds(event.target.value)}
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Usado quando o slide nao tiver tempo personalizado.
+                    </p>
+                  </div>
+                  <div className="space-y-3 rounded-2xl border border-border/70 bg-background/35 p-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Titulo da tela</label>
+                      <Input
+                        placeholder="Ex: Fogareiro ITZ Restaurante"
+                        value={showcaseTitle}
+                        onChange={(event) => setShowcaseTitle(event.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold">Subtitulo da tela</label>
+                      <Input
+                        placeholder="Ex: Cardapio da casa"
+                        value={showcaseSubtitle}
+                        onChange={(event) => setShowcaseSubtitle(event.target.value)}
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Dica: use imagens horizontais (1920x1080) para melhor resultado na TV.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {showcaseSlidesDraft.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-border/70 bg-background/30 p-4 text-sm text-muted-foreground">
+                      Nenhuma foto no album ainda. Clique em "Adicionar slide".
+                    </div>
+                  ) : (
+                    showcaseSlidesDraft.map((slide, index) => (
+                      <div key={slide.id} className="rounded-2xl border border-border/70 bg-background/35 p-4">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-[160px_minmax(0,1fr)_130px_110px_auto] md:items-start">
+                          <div className="h-24 overflow-hidden rounded-xl border border-border/60 bg-black/25">
+                            <img
+                              src={slide.imageUrl.trim() || FALLBACK_PRODUCT_IMAGE}
+                              alt={slide.title || `Slide ${index + 1}`}
+                              className="h-full w-full object-contain"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Input
+                              placeholder="Titulo do slide (ex: Promocao da semana)"
+                              value={slide.title}
+                              onChange={(event) =>
+                                updateShowcaseSlide(slide.id, (current) => ({ ...current, title: event.target.value }))
+                              }
+                            />
+                            <Input
+                              placeholder="URL da imagem (https://...)"
+                              value={slide.imageUrl}
+                              onChange={(event) =>
+                                updateShowcaseSlide(slide.id, (current) => ({ ...current, imageUrl: event.target.value }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                              Segundos
+                            </label>
+                            <Input
+                              type="number"
+                              min="3"
+                              max="30"
+                              value={slide.durationSeconds}
+                              onChange={(event) =>
+                                updateShowcaseSlide(slide.id, (current) => ({
+                                  ...current,
+                                  durationSeconds: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                          <label className="inline-flex items-center gap-2 pt-2 text-sm text-muted-foreground">
+                            <input
+                              type="checkbox"
+                              checked={slide.isActive}
+                              onChange={(event) =>
+                                updateShowcaseSlide(slide.id, (current) => ({ ...current, isActive: event.target.checked }))
+                              }
+                            />
+                            Ativo
+                          </label>
+                          <div className="flex items-center gap-2 md:justify-end">
+                            <Button type="button" variant="outline" size="icon" onClick={() => moveShowcaseSlide(slide.id, "up")}>
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button type="button" variant="outline" size="icon" onClick={() => moveShowcaseSlide(slide.id, "down")}>
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() =>
+                                setShowcaseSlidesDraft((current) => current.filter((item) => item.id !== slide.id))
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowcaseSlidesDraft((current) => [...current, EMPTY_SHOWCASE_SLIDE()])}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar slide
+                </Button>
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsShowcaseAlbumOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="button" variant="outline" onClick={handlePreviewShowcase}>
+                  Preview em tela cheia
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveShowcaseAlbum}
+                  disabled={updateSettingsMutation.isPending}
+                >
+                  Salvar album
+                </Button>
+                <Button
+                  type="button"
+                  className="bg-accent text-accent-foreground hover:bg-accent/90"
+                  onClick={handlePublishShowcaseNow}
+                  disabled={updateSettingsMutation.isPending}
+                >
+                  Publicar album agora
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <Dialog open={isCreateTableOpen} onOpenChange={setIsCreateTableOpen}>
             <DialogContent className="max-h-[calc(100dvh-1rem)] max-w-[min(680px,calc(100vw-1rem))] border-border/70 bg-card/98 sm:max-w-[min(680px,calc(100vw-2rem))]">
