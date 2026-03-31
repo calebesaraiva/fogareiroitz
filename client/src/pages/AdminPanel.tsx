@@ -924,7 +924,7 @@ export default function AdminPanel() {
       );
       await settingsQuery.refetch();
       setIsShowcaseAlbumOpen(false);
-      window.open(`/painel-clientes?v=${Date.now()}`, "_blank");
+      window.open("/painel-clientes", "_blank");
       toast.success("Album publicado com sucesso");
     } catch (error) {
       console.error(error);
