@@ -721,7 +721,12 @@ export default function AdminPanel() {
       toast.success(`Mesa ${createdTable.number} cadastrada com PDF pronto para impressao`);
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel cadastrar essa mesa");
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.toLowerCase().includes("ja cadastrada")) {
+        toast.error(message);
+      } else {
+        toast.error("Nao foi possivel cadastrar essa mesa");
+      }
     }
   };
 

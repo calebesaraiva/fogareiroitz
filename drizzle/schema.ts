@@ -110,6 +110,8 @@ export const orders = pgTable("orders", {
   paidAt: timestamp("paidAt", { mode: "date" }),
   serviceFeeApplied: boolean("serviceFeeApplied").default(true).notNull(),
   serviceFeeAmount: integer("serviceFeeAmount").default(0).notNull(),
+  discountAmount: integer("discountAmount").default(0).notNull(),
+  discountAuthorizedBy: varchar("discountAuthorizedBy", { length: 320 }),
   paidTotal: integer("paidTotal"),
   paymentMethod: varchar("paymentMethod", { length: 24 }),
   amountReceived: integer("amountReceived"),

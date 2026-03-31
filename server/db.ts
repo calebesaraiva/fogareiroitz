@@ -446,6 +446,8 @@ async function ensureAppSchema(sql: postgres.Sql) {
       "paidAt" timestamptz,
       "serviceFeeApplied" boolean not null default true,
       "serviceFeeAmount" integer not null default 0,
+      "discountAmount" integer not null default 0,
+      "discountAuthorizedBy" varchar(320),
       "paidTotal" integer,
       "createdAt" timestamptz not null default now(),
       "updatedAt" timestamptz not null default now()
@@ -480,6 +482,16 @@ async function ensureAppSchema(sql: postgres.Sql) {
   await sql`
     alter table public.orders
     add column if not exists "serviceFeeAmount" integer not null default 0
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "discountAmount" integer not null default 0
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "discountAuthorizedBy" varchar(320)
   `;
 
   await sql`
@@ -1119,7 +1131,36 @@ export async function createDiningTable(data: DiningTablePayload) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const normalizedNumber = Number(data.number);
+  if (!Number.isInteger(normalizedNumber) || normalizedNumber <= 0) {
+    throw new Error("Numero de mesa invalido");
+  }
+
   const normalizedLabel = data.label?.trim() || `Mesa ${data.number}`;
+
+  const [existingTable] = await db
+    .select()
+    .from(diningTables)
+    .where(eq(diningTables.number, normalizedNumber))
+    .limit(1);
+
+  if (existingTable) {
+    if (existingTable.isActive) {
+      throw new Error(`Mesa ${normalizedNumber} ja cadastrada`);
+    }
+
+    const [reactivatedTable] = await db
+      .update(diningTables)
+      .set({
+        label: normalizedLabel,
+        isActive: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(diningTables.id, Number(existingTable.id)))
+      .returning();
+
+    if (reactivatedTable) return reactivatedTable;
+  }
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const token = createPublicTableToken();
@@ -1128,7 +1169,7 @@ export async function createDiningTable(data: DiningTablePayload) {
       const [createdTable] = await db
         .insert(diningTables)
         .values({
-          number: data.number,
+          number: normalizedNumber,
           label: normalizedLabel,
           publicToken: token,
           isActive: data.isActive ?? true,
@@ -1247,7 +1288,9 @@ export async function markOrderAsPaid(
   id: number,
   paymentMethod: PaymentMethod,
   removeServiceFee = false,
-  amountReceived?: number | null
+  amountReceived?: number | null,
+  discountAmount = 0,
+  discountAuthorizedBy?: string | null
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1268,7 +1311,9 @@ export async function markOrderAsPaid(
   const serviceFeeAmount = serviceFeeApplied
     ? Math.round((subtotal * DEFAULT_SERVICE_FEE_PERCENT) / 100)
     : 0;
-  const paidTotal = subtotal + serviceFeeAmount;
+  const maxDiscount = subtotal + serviceFeeAmount;
+  const normalizedDiscountAmount = Math.max(0, Math.min(maxDiscount, Number(discountAmount || 0)));
+  const paidTotal = subtotal + serviceFeeAmount - normalizedDiscountAmount;
   const normalizedAmountReceived =
     paymentMethod === "cash" ? Math.max(0, Number(amountReceived ?? 0)) : paidTotal;
 
@@ -1286,6 +1331,8 @@ export async function markOrderAsPaid(
       paidAt: new Date(),
       serviceFeeApplied,
       serviceFeeAmount,
+      discountAmount: normalizedDiscountAmount,
+      discountAuthorizedBy: normalizedDiscountAmount > 0 ? discountAuthorizedBy ?? null : null,
       paidTotal,
       paymentMethod,
       amountReceived: normalizedAmountReceived,

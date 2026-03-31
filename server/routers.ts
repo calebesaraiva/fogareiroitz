@@ -407,15 +407,41 @@ export const appRouter = router({
           paymentMethod: z.enum(["cash", "card", "pix"]),
           amountReceived: z.number().int().nonnegative().nullable().optional(),
           removeServiceFee: z.boolean().optional(),
+          discountAmount: z.number().int().nonnegative().optional(),
+          discountApproval: z
+            .object({
+              adminEmail: z.string().email(),
+              adminPassword: z.string().min(6),
+            })
+            .optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         if (!canAccessCashier(ctx.user?.role)) throw new Error("Unauthorized");
+        const discountAmount = Math.max(0, Number(input.discountAmount ?? 0));
+
+        if (discountAmount > 0) {
+          if (!input.discountApproval?.adminEmail || !input.discountApproval?.adminPassword) {
+            throw new Error("Desconto exige autorizacao de admin");
+          }
+
+          const adminUser = await authenticateLocalUser(
+            input.discountApproval.adminEmail,
+            input.discountApproval.adminPassword
+          );
+
+          if (!adminUser || adminUser.role !== "admin") {
+            throw new Error("Credenciais de admin invalidas para desconto");
+          }
+        }
+
         return markOrderAsPaid(
           input.id,
           input.paymentMethod,
           Boolean(input.removeServiceFee),
-          input.amountReceived ?? null
+          input.amountReceived ?? null,
+          discountAmount,
+          input.discountApproval?.adminEmail ?? null
         );
       }),
 
