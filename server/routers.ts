@@ -6,6 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import {
   authenticateLocalUser,
+  closeCashierDay,
   createDiningTable,
   createLocalUser,
   createProduct,
@@ -15,12 +16,17 @@ import {
   getAllDiningTables,
   getAllOrders,
   getAllProducts,
+  getAppSettings,
   getActiveDiningTables,
+  getCashierOrders,
+  getCashierReport,
   getDiningTableByPublicToken,
   getLatestOrderByPhone,
   getProductById,
   getKitchenOrders,
   listLocalUsers,
+  markOrderAsPaid,
+  updateAppSettings,
   updateLocalUser,
   updateLocalUserPassword,
   updateOrderDetails,
@@ -30,10 +36,13 @@ import {
 } from "./db";
 
 const canViewOrders = (role?: string | null) =>
-  role === "admin" || role === "kitchen" || role === "waiter";
+  role === "admin" || role === "kitchen" || role === "waiter" || role === "cashier";
 
 const canOperateOrders = (role?: string | null) =>
   role === "kitchen" || role === "waiter";
+
+const canAccessCashier = (role?: string | null) =>
+  role === "cashier";
 
 const phoneSchema = z
   .string()
@@ -42,8 +51,7 @@ const phoneSchema = z
     message: "Telefone invalido",
   });
 
-const staffRoleSchema = z.enum(["admin", "kitchen", "waiter"]);
-const paymentMethodSchema = z.enum(["pix", "card", "cash"]);
+const staffRoleSchema = z.enum(["admin", "kitchen", "waiter", "cashier"]);
 
 export const appRouter = router({
   system: systemRouter,
@@ -130,6 +138,24 @@ export const appRouter = router({
       }),
   }),
 
+  settings: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user?.role !== "admin") throw new Error("Unauthorized");
+      return getAppSettings();
+    }),
+    update: protectedProcedure
+      .input(
+        z.object({
+          autoPreparingPercent: z.number().int().min(0).max(80).optional(),
+          autoDeliveredGraceMinutes: z.number().int().min(0).max(120).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user?.role !== "admin") throw new Error("Unauthorized");
+        return updateAppSettings(input);
+      }),
+  }),
+
   categories: router({
     list: publicProcedure.query(async () => {
       return getAllCategories();
@@ -202,6 +228,7 @@ export const appRouter = router({
         description: z.string().optional(),
         price: z.number().int().positive(),
         imageUrl: z.string().optional(),
+        imageFit: z.enum(["cover", "contain"]).optional(),
         imageKey: z.string().optional(),
         ingredients: z.string().optional(),
       }))
@@ -218,6 +245,7 @@ export const appRouter = router({
         description: z.string().optional(),
         price: z.number().int().positive().optional(),
         imageUrl: z.string().optional(),
+        imageFit: z.enum(["cover", "contain"]).optional(),
         imageKey: z.string().optional(),
         ingredients: z.string().optional(),
         isActive: z.boolean().optional(),
@@ -334,37 +362,88 @@ export const appRouter = router({
         return getLatestOrderByPhone(input.customerPhone.trim());
       }),
 
+    liveBoard: publicProcedure.query(async () => {
+      const orders = await getAllOrders();
+      return orders
+        .filter((order) => order.status !== "cancelled")
+        .slice(0, 20)
+        .map((order) => ({
+          id: order.id,
+          customerName: order.customerName,
+          tableNumber: order.tableNumber ?? null,
+          status: order.status,
+          createdAt: order.createdAt,
+        }));
+    }),
+
+    cashier: protectedProcedure.query(async ({ ctx }) => {
+      if (!canAccessCashier(ctx.user?.role)) throw new Error("Unauthorized");
+      return getCashierOrders();
+    }),
+
+    markPaid: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          paymentMethod: z.enum(["cash", "card", "pix"]),
+          amountReceived: z.number().int().nonnegative().nullable().optional(),
+          removeServiceFee: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (!canAccessCashier(ctx.user?.role)) throw new Error("Unauthorized");
+        return markOrderAsPaid(
+          input.id,
+          input.paymentMethod,
+          Boolean(input.removeServiceFee),
+          input.amountReceived ?? null
+        );
+      }),
+
+    cashierReport: protectedProcedure
+      .input(
+        z.object({
+          dateFrom: z.string(),
+          dateTo: z.string(),
+        })
+      )
+      .query(async ({ ctx, input }) => {
+        if (!canAccessCashier(ctx.user?.role)) throw new Error("Unauthorized");
+        const dateFrom = new Date(input.dateFrom);
+        const dateTo = new Date(input.dateTo);
+        if (Number.isNaN(dateFrom.getTime()) || Number.isNaN(dateTo.getTime())) {
+          throw new Error("Periodo invalido");
+        }
+        return getCashierReport(dateFrom, dateTo);
+      }),
+
+    closeDay: protectedProcedure
+      .input(
+        z.object({
+          date: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (!canAccessCashier(ctx.user?.role)) throw new Error("Unauthorized");
+        return closeCashierDay(input.date ? new Date(input.date) : new Date());
+      }),
+
     updateStatus: protectedProcedure
       .input(
         z.object({
           id: z.number().int().positive(),
-          status: z.enum([
-            "pending",
-            "new",
-            "preparing",
-            "ready",
-            "awaiting_payment",
-            "delivered",
-            "cancelled",
-          ]),
+          status: z.enum(["pending", "new", "preparing", "ready", "delivered", "cancelled"]),
           estimatedReadyMinutes: z.number().int().positive().max(240).nullable().optional(),
-          paymentMethod: paymentMethodSchema.nullable().optional(),
-          paymentNotes: z.string().max(500).nullable().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         if (!canOperateOrders(ctx.user?.role)) throw new Error("Unauthorized");
-        if (
-          input.estimatedReadyMinutes !== undefined ||
-          input.paymentMethod !== undefined ||
-          input.paymentNotes !== undefined
-        ) {
-          return updateOrderStatusWithMeta(input.id, input.status, {
-            estimatedReadyMinutes: input.estimatedReadyMinutes,
-            paymentMethod: input.paymentMethod,
-            paymentNotes: input.paymentNotes?.trim() || null,
-            paidAt: input.status === "delivered" ? new Date() : undefined,
-          });
+        if (input.estimatedReadyMinutes !== undefined) {
+          return updateOrderStatusWithMeta(
+            input.id,
+            input.status,
+            input.estimatedReadyMinutes
+          );
         }
         return updateOrderStatus(input.id, input.status);
       }),

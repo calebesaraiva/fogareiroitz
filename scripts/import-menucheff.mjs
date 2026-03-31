@@ -73,22 +73,6 @@ const ensureSchema = async () => {
   `;
 
   await sql`
-    create table if not exists public.products (
-      id bigserial primary key,
-      "categoryId" bigint references public.categories(id) on delete set null,
-      name varchar(255) not null,
-      description text,
-      price integer not null,
-      "imageUrl" text,
-      "imageKey" varchar(255),
-      ingredients text,
-      "isActive" boolean not null default true,
-      "createdAt" timestamptz not null default now(),
-      "updatedAt" timestamptz not null default now()
-    )
-  `;
-
-  await sql`
     alter table public.products
     add column if not exists "categoryId" bigint references public.categories(id) on delete set null
   `;

@@ -32,6 +32,11 @@ export default function Login() {
         return;
       }
 
+      if (user?.role === "cashier") {
+        setLocation("/caixa");
+        return;
+      }
+
       setLocation("/admin");
     }
   }, [loading, isAuthenticated, user, setLocation]);
@@ -63,6 +68,11 @@ export default function Login() {
 
       if (loggedUser.role === "waiter") {
         setLocation("/garcom");
+        return;
+      }
+
+      if (loggedUser.role === "cashier") {
+        setLocation("/caixa");
         return;
       }
 
@@ -105,7 +115,7 @@ export default function Login() {
           <CardHeader className="space-y-2">
             <CardTitle className="text-2xl">Entrar</CardTitle>
             <CardDescription>
-              Use seu email e senha para acessar o painel administrativo, cozinha ou operacao.
+              Use seu email e senha para acessar o painel administrativo, cozinha, garcom ou caixa.
             </CardDescription>
           </CardHeader>
 

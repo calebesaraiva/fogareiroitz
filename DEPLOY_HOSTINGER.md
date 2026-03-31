@@ -64,10 +64,7 @@ VITE_APP_LOGO=/fogareiro-logo.png
 ```bash
 pnpm check
 pnpm build
-pnpm import:menucheff
 ```
-
-Esse ultimo comando baixa as categorias e produtos do MenuCheff e popula as tabelas `categories` e `products`.
 
 ### 5. Subir com PM2
 
@@ -166,7 +163,6 @@ cd ~/fogareiro-itz
 git pull
 pnpm install
 pnpm build
-pnpm import:menucheff
 pm2 restart fogareiro-itz
 ```
 

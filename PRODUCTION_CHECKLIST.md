@@ -17,6 +17,7 @@ O sistema cria estes acessos automaticamente no primeiro start com banco configu
 - `vania@fogareiroitz.com` - senha `Fogareiro@Adm2026`
 - `norton@fogareiroitz.com` - senha `Fogareiro@Adm2026`
 - `cozinha@fogareiroitz.com` - senha `Fogareiro@Cozinha2026`
+- `caixa@fogareiroitz.com` - senha `Fogareiro@Caixa2026`
 
 Depois do primeiro login, altere as senhas pelo painel administrativo.
 
@@ -51,5 +52,3 @@ Depois valide manualmente:
 
 - O frontend ainda emite aviso de bundle grande no build. Nao bloqueia producao.
 - Se o produto sair do cardapio entre selecao e checkout, o pedido continua sendo salvo com nome e preco do item.
-- Rodar importacao inicial do cardapio:
-  `pnpm import:menucheff`

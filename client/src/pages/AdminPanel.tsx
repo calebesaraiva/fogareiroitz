@@ -56,6 +56,7 @@ type Product = {
   description: string | null;
   price: number;
   imageUrl: string | null;
+  imageFit: string;
   imageKey: string | null;
   ingredients: string | null;
   isActive: boolean;
@@ -66,17 +67,24 @@ type Product = {
 type OrderSummary = {
   id: number;
   customerName: string;
-  status:
-    | "pending"
-    | "new"
-    | "preparing"
-    | "ready"
-    | "awaiting_payment"
-    | "delivered"
-    | "cancelled";
+  status: "pending" | "new" | "preparing" | "ready" | "delivered" | "cancelled";
   orderType: "dine_in" | "takeaway" | "reservation";
   tableId?: number | null;
   total: number;
+  createdAt: Date;
+};
+
+type CashierOrder = {
+  id: number;
+  customerName: string;
+  customerPhone: string | null;
+  tableId: number | null;
+  tableNumber: number | null;
+  tableLabel: string | null;
+  status: "pending" | "new" | "preparing" | "ready" | "delivered" | "cancelled";
+  total: number;
+  isPaid: boolean;
+  serviceFeeDefault: number;
   createdAt: Date;
 };
 
@@ -86,6 +94,7 @@ type ProductForm = {
   description: string;
   price: string;
   imageUrl: string;
+  imageFit: "cover" | "contain";
   ingredients: string;
   isActive: boolean;
 };
@@ -94,7 +103,7 @@ type LocalUser = {
   id: number;
   name: string | null;
   email: string | null;
-  role: "admin" | "kitchen" | "waiter" | "user";
+  role: "admin" | "kitchen" | "waiter" | "cashier" | "user";
   isActive: boolean;
 };
 
@@ -102,7 +111,7 @@ type StaffForm = {
   name: string;
   email: string;
   password: string;
-  role: "admin" | "kitchen" | "waiter";
+  role: "admin" | "kitchen" | "waiter" | "cashier";
 };
 
 type DiningTable = {
@@ -126,6 +135,7 @@ const EMPTY_FORM: ProductForm = {
   description: "",
   price: "",
   imageUrl: "",
+  imageFit: "cover",
   ingredients: "",
   isActive: true,
 };
@@ -160,10 +170,17 @@ export default function AdminPanel() {
     enabled: isAuthenticated && user?.role === "admin",
     refetchInterval: 5000,
   });
+  const cashierQuery = trpc.orders.cashier.useQuery(undefined, {
+    enabled: false,
+    refetchInterval: 5000,
+  });
   const staffQuery = trpc.staff.list.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === "admin",
   });
   const tablesQuery = trpc.tables.listAll.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === "admin",
+  });
+  const settingsQuery = trpc.settings.get.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === "admin",
   });
 
@@ -173,6 +190,8 @@ export default function AdminPanel() {
   const createStaffMutation = trpc.staff.create.useMutation();
   const updateStaffMutation = trpc.staff.update.useMutation();
   const createTableMutation = trpc.tables.create.useMutation();
+  const markPaidMutation = trpc.orders.markPaid.useMutation();
+  const updateSettingsMutation = trpc.settings.update.useMutation();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isCreateStaffOpen, setIsCreateStaffOpen] = useState(false);
@@ -183,10 +202,15 @@ export default function AdminPanel() {
   const [staffForm, setStaffForm] = useState<StaffForm>(EMPTY_STAFF_FORM);
   const [tableForm, setTableForm] = useState<TableForm>(EMPTY_TABLE_FORM);
   const [staffPasswordDrafts, setStaffPasswordDrafts] = useState<Record<number, string>>({});
+  const [cashierSearch, setCashierSearch] = useState("");
+  const [removeFeeByOrderId, setRemoveFeeByOrderId] = useState<Record<number, boolean>>({});
+  const [autoPreparingPercent, setAutoPreparingPercent] = useState("15");
+  const [autoDeliveredGraceMinutes, setAutoDeliveredGraceMinutes] = useState("8");
   const previousPendingOrderIdsRef = useRef<number[]>([]);
 
   const products = productsQuery.data ?? [];
   const orders = (ordersQuery.data ?? []) as OrderSummary[];
+  const cashierOrders = (cashierQuery.data ?? []) as CashierOrder[];
   const localUsers = (staffQuery.data ?? []) as LocalUser[];
   const diningTables = (tablesQuery.data ?? []) as DiningTable[];
   const categorySuggestions = useMemo(
@@ -269,6 +293,24 @@ export default function AdminPanel() {
     return window.location.origin;
   }, []);
 
+  const filteredCashierOrders = useMemo(() => {
+    const query = cashierSearch.trim().toLowerCase();
+    const queryDigits = cashierSearch.replace(/\D/g, "");
+
+    if (!query && !queryDigits) return cashierOrders;
+
+    return cashierOrders.filter((order) => {
+      const byName = order.customerName.toLowerCase().includes(query);
+      const byPhone = queryDigits.length > 0 && (order.customerPhone ?? "").includes(queryDigits);
+      const byTableNumber =
+        queryDigits.length > 0 &&
+        order.tableNumber !== null &&
+        String(order.tableNumber).includes(queryDigits);
+
+      return byName || byPhone || byTableNumber;
+    });
+  }, [cashierOrders, cashierSearch]);
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       setLocation("/login");
@@ -297,12 +339,26 @@ export default function AdminPanel() {
     previousPendingOrderIdsRef.current = pendingIds;
   }, [orders]);
 
+  useEffect(() => {
+    if (!settingsQuery.data) return;
+    setAutoPreparingPercent(String(settingsQuery.data.autoPreparingPercent ?? 15));
+    setAutoDeliveredGraceMinutes(String(settingsQuery.data.autoDeliveredGraceMinutes ?? 8));
+  }, [settingsQuery.data]);
+
   const formatPrice = (price: number | string) => {
     const numericPrice = typeof price === "string" ? parseFloat(price || "0") : price / 100;
     return numericPrice.toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
     });
+  };
+
+  const formatPhone = (value: string | null) => {
+    const digits = (value ?? "").replace(/\D/g, "");
+    if (digits.length === 11) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    }
+    return value ?? "-";
   };
 
   const getTablePublicUrl = (table: Pick<DiningTable, "publicToken">) => {
@@ -312,30 +368,14 @@ export default function AdminPanel() {
     return `${baseOrigin}/?mesaToken=${table.publicToken}`;
   };
 
-  const toDataUrl = async (assetUrl: string) => {
-    const response = await fetch(assetUrl);
-    if (!response.ok) {
-      throw new Error("Nao foi possivel carregar a logomarca para o PDF");
-    }
-
-    const blob = await response.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("Nao foi possivel converter a logomarca"));
-      reader.readAsDataURL(blob);
-    });
-  };
-
   const buildTableQrPdf = async (table: DiningTable) => {
     const publicUrl = getTablePublicUrl(table);
-    const logoDataUrl = await toDataUrl(import.meta.env.VITE_APP_LOGO || "/fogareiro-logo.png");
     const qrDataUrl = await QRCode.toDataURL(publicUrl, {
       width: 720,
-      margin: 0,
+      margin: 1,
       color: {
-        dark: "#2a1112",
-        light: "#fffaf6",
+        dark: "#31161f",
+        light: "#fff7f5",
       },
     });
 
@@ -347,93 +387,63 @@ export default function AdminPanel() {
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const cardX = 12;
-    const cardY = 12;
+    const cardX = 16;
+    const cardY = 16;
     const cardWidth = pageWidth - cardX * 2;
     const cardHeight = pageHeight - cardY * 2;
-    const qrSize = 84;
+    const qrSize = 92;
     const qrX = (pageWidth - qrSize) / 2;
 
-    pdf.setFillColor(247, 239, 231);
+    pdf.setFillColor(255, 247, 245);
     pdf.rect(0, 0, pageWidth, pageHeight, "F");
-    pdf.setFillColor(52, 23, 21);
-    pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 12, 12, "F");
+    pdf.setDrawColor(219, 140, 161);
+    pdf.setLineWidth(0.8);
+    pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 10, 10, "S");
 
-    pdf.setFillColor(112, 56, 33);
-    pdf.roundedRect(cardX + 8, cardY + 8, cardWidth - 16, 44, 10, 10, "F");
+    pdf.addImage(qrDataUrl, "PNG", qrX, 48, qrSize, qrSize, undefined, "FAST");
 
-    pdf.setFillColor(255, 248, 241);
-    pdf.roundedRect(cardX + 12, 60, cardWidth - 24, 150, 10, 10, "F");
-
-    pdf.setFillColor(242, 227, 214);
-    pdf.roundedRect(cardX + 20, 68, cardWidth - 40, 98, 8, 8, "F");
-    pdf.setFillColor(255, 255, 255);
-    pdf.roundedRect(qrX - 6, 74, qrSize + 12, qrSize + 12, 6, 6, "F");
-
-    pdf.addImage(logoDataUrl, "PNG", pageWidth / 2 - 16, 18, 32, 24, undefined, "FAST");
-    pdf.addImage(qrDataUrl, "PNG", qrX, 80, qrSize, qrSize, undefined, "FAST");
-
-    pdf.setTextColor(255, 243, 233);
+    pdf.setTextColor(102, 38, 49);
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(8);
-    pdf.text("FOGAREIRO ITZ RESTAURANTE", pageWidth / 2, 48, {
+    pdf.setFontSize(24);
+    pdf.text(import.meta.env.VITE_APP_TITLE || "Fogareiro ITZ Restaurante", pageWidth / 2, 30, {
       align: "center",
     });
 
-    pdf.setTextColor(95, 48, 28);
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(26);
-    pdf.text(`Mesa ${table.number}`, pageWidth / 2, 180, {
-      align: "center",
-    });
-
-    pdf.setFontSize(11);
+    pdf.setFontSize(12);
     pdf.setFont("helvetica", "normal");
-    pdf.text(table.label || `Mesa ${table.number}`, pageWidth / 2, 187, { align: "center" });
+    pdf.text("Especial Dia das Maes", pageWidth / 2, 38, { align: "center" });
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(28);
+    pdf.text(`Mesa ${table.number}`, pageWidth / 2, 155, { align: "center" });
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(12);
+    pdf.text(table.label || `Mesa ${table.number}`, pageWidth / 2, 164, { align: "center" });
 
     pdf.setFontSize(11);
     pdf.text(
-      "Escaneie o QR Code para abrir o cardapio da casa direto no celular.",
+      "Escaneie este QR Code para abrir o cardapio presencial e registrar o pedido da mesa.",
       pageWidth / 2,
-      198,
+      178,
       { align: "center", maxWidth: 150 }
     );
 
-    pdf.setTextColor(126, 83, 59);
-    pdf.setFontSize(9.5);
-    pdf.text("1. Abra a camera", 42, 222);
-    pdf.text("2. Escaneie o QR", pageWidth / 2, 222, { align: "center" });
-    pdf.text("3. Faca seu pedido", pageWidth - 42, 222, { align: "right" });
+    pdf.setDrawColor(240, 197, 206);
+    pdf.line(32, 190, pageWidth - 32, 190);
 
-    pdf.setDrawColor(196, 158, 132);
-    pdf.setLineWidth(0.4);
-    pdf.line(26, 228, pageWidth - 26, 228);
-
-    pdf.setTextColor(95, 48, 28);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
-    pdf.text("Link de acesso da mesa", pageWidth / 2, 236, { align: "center" });
+    pdf.text("Link da mesa", pageWidth / 2, 200, { align: "center" });
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(9);
-    pdf.text(publicUrl, pageWidth / 2, 243, { align: "center", maxWidth: 160 });
+    pdf.text(publicUrl, pageWidth / 2, 207, { align: "center", maxWidth: 160 });
 
-    pdf.setTextColor(255, 234, 217);
-    pdf.setFillColor(86, 36, 27);
-    pdf.roundedRect(cardX + 12, 252, cardWidth - 24, 20, 8, 8, "F");
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(10.5);
-    pdf.text("Pedido liberado somente dentro do restaurante", pageWidth / 2, 260.5, {
+    pdf.setFontSize(10);
+    pdf.text("Fogareiro ITZ Restaurante", pageWidth / 2, 265, { align: "center" });
+    pdf.text("Pedido liberado somente dentro do restaurante.", pageWidth / 2, 271, {
       align: "center",
     });
-
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(8.5);
-    pdf.text(
-      "Posicione este material sobre a mesa para facilitar o acesso rapido ao cardapio.",
-      pageWidth / 2,
-      267,
-      { align: "center", maxWidth: 150 }
-    );
 
     pdf.save(`mesa-${table.number}-fogareiro.pdf`);
   };
@@ -447,6 +457,7 @@ export default function AdminPanel() {
         description: product.description ?? "",
         price: (product.price / 100).toString(),
         imageUrl: product.imageUrl ?? "",
+        imageFit: product.imageFit === "contain" ? "contain" : "cover",
         ingredients: product.ingredients ?? "",
         isActive: product.isActive,
       });
@@ -495,6 +506,7 @@ export default function AdminPanel() {
         description: formData.description.trim() || undefined,
         price: priceInCents,
         imageUrl: formData.imageUrl.trim() || undefined,
+        imageFit: formData.imageFit,
         ingredients: formData.ingredients.trim() || undefined,
         isActive: formData.isActive,
       };
@@ -687,6 +699,59 @@ export default function AdminPanel() {
     }
   };
 
+  const handleMarkOrderPaid = async (order: CashierOrder) => {
+    try {
+      const removeServiceFee = Boolean(removeFeeByOrderId[order.id]);
+      const serviceFeeAmount = removeServiceFee
+        ? 0
+        : Math.round(Number(order.total) * (Number(order.serviceFeeDefault || 10) / 100));
+      const paidTotal = Number(order.total) + serviceFeeAmount;
+      await withLoading(
+        () =>
+          markPaidMutation.mutateAsync({
+            id: Number(order.id),
+            paymentMethod: "cash",
+            amountReceived: paidTotal,
+            removeServiceFee,
+          }),
+        { message: `Registrando pagamento da comanda #${order.id}` }
+      );
+
+      setRemoveFeeByOrderId((current) => {
+        const next = { ...current };
+        delete next[order.id];
+        return next;
+      });
+
+      await Promise.all([cashierQuery.refetch(), ordersQuery.refetch()]);
+      toast.success(`Pagamento da comanda #${order.id} confirmado no caixa`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Nao foi possivel registrar esse pagamento");
+    }
+  };
+
+  const handleSaveAutoSettings = async () => {
+    const preparingPercent = Math.max(0, Math.min(80, Number(autoPreparingPercent) || 15));
+    const graceMinutes = Math.max(0, Math.min(120, Number(autoDeliveredGraceMinutes) || 8));
+
+    try {
+      await withLoading(
+        () =>
+          updateSettingsMutation.mutateAsync({
+            autoPreparingPercent: preparingPercent,
+            autoDeliveredGraceMinutes: graceMinutes,
+          }),
+        { message: "Salvando configuracoes de automacao" }
+      );
+      await settingsQuery.refetch();
+      toast.success("Configuracao de automacao atualizada");
+    } catch (error) {
+      console.error(error);
+      toast.error("Nao foi possivel salvar as configuracoes");
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     await pulseLoading("Saindo do painel", 950);
@@ -744,7 +809,11 @@ export default function AdminPanel() {
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => ordersQuery.refetch()} className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => Promise.all([ordersQuery.refetch(), cashierQuery.refetch()])}
+              className="gap-2"
+            >
               <RefreshCcw className="h-4 w-4" />
               Atualizar
             </Button>
@@ -860,7 +929,7 @@ export default function AdminPanel() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
           <button
             type="button"
             onClick={() => scrollToSection("admin-mesas")}
@@ -899,6 +968,18 @@ export default function AdminPanel() {
 
           <button
             type="button"
+            onClick={() => scrollToSection("admin-caixa")}
+            className="fogareiro-admin-shortcut rounded-[1.45rem] border border-border/70 bg-card/78 p-4 text-left shadow-[0_16px_42px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-accent/35 hover:bg-card"
+          >
+            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Caixa</p>
+            <p className="mt-2 font-semibold text-foreground">Receber comandas</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Busque por cliente, telefone ou mesa e finalize no caixa.
+            </p>
+          </button>
+
+          <button
+            type="button"
             onClick={() => scrollToSection("admin-cardapio")}
             className="fogareiro-admin-shortcut rounded-[1.45rem] border border-border/70 bg-card/78 p-4 text-left shadow-[0_16px_42px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-accent/35 hover:bg-card"
           >
@@ -906,6 +987,18 @@ export default function AdminPanel() {
             <p className="mt-2 font-semibold text-foreground">Produtos e categorias</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Atualize itens, imagens e destaques da casa.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => window.open("/painel-clientes", "_blank")}
+            className="fogareiro-admin-shortcut rounded-[1.45rem] border border-border/70 bg-card/78 p-4 text-left shadow-[0_16px_42px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-accent/35 hover:bg-card"
+          >
+            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Tela clientes</p>
+            <p className="mt-2 font-semibold text-foreground">Painel vitrine</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Mostra logo, fotos dos pratos e ultimos pedidos ao vivo.
             </p>
           </button>
         </section>
@@ -1119,6 +1212,154 @@ export default function AdminPanel() {
                   </strong>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid grid-cols-1 gap-6">
+          <Card className={sectionCardClass}>
+            <CardHeader>
+              <CardTitle>Automacao da cozinha</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Ajuste como o sistema avanca o pedido automaticamente por tempo.
+              </p>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+              <div>
+                <label className="mb-2 block text-sm font-semibold">Entrar em preparo (%)</label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="80"
+                  value={autoPreparingPercent}
+                  onChange={(event) => setAutoPreparingPercent(event.target.value)}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Exemplo: 15% significa que o pedido vira "Em preparo" aos 15% do tempo total.
+                </p>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold">Minutos para auto-entregue</label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="120"
+                  value={autoDeliveredGraceMinutes}
+                  onChange={(event) => setAutoDeliveredGraceMinutes(event.target.value)}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tempo adicional apos "Pronto" para marcar "Entregue" automaticamente.
+                </p>
+              </div>
+              <Button
+                onClick={handleSaveAutoSettings}
+                disabled={updateSettingsMutation.isPending}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                Salvar automacao
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section id="admin-caixa" className="scroll-mt-28">
+          <Card className={sectionCardClass}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <WalletCards className="h-5 w-5 text-accent" />
+                Caixa e comandas
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Pagamento concentrado no caixa. Toda comanda entra com 10% de garcom por padrao,
+                com opcao de remover se o cliente nao quiser.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                <Input
+                  value={cashierSearch}
+                  onChange={(event) => setCashierSearch(event.target.value)}
+                  placeholder="Buscar por nome, telefone ou numero da mesa"
+                />
+                <Badge variant="outline" className="w-fit">
+                  {filteredCashierOrders.length} conta(s) pendente(s)
+                </Badge>
+              </div>
+
+              {filteredCashierOrders.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border/70 bg-background/40 p-4 text-sm text-muted-foreground">
+                  Nenhuma comanda pendente para esse filtro.
+                </div>
+              ) : (
+                <div className="fogareiro-scrollbar max-h-[28rem] space-y-3 overflow-y-auto pr-2">
+                  {filteredCashierOrders.map((order) => {
+                    const subtotal = Number(order.total);
+                    const removeServiceFee = Boolean(removeFeeByOrderId[order.id]);
+                    const serviceFeeAmount = removeServiceFee ? 0 : Math.round(subtotal * 0.1);
+                    const finalTotal = subtotal + serviceFeeAmount;
+
+                    return (
+                      <div
+                        key={order.id}
+                        className="rounded-[1.45rem] border border-border/70 bg-background/40 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="font-semibold text-foreground">Comanda #{order.id}</p>
+                            <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Telefone: {formatPhone(order.customerPhone)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Mesa: {order.tableNumber ? `Mesa ${order.tableNumber}` : "Sem mesa"}
+                            </p>
+                          </div>
+                          <Badge>{order.status}</Badge>
+                        </div>
+
+                        <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-card/55 p-3 text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Subtotal</span>
+                            <strong className="text-foreground">{formatPrice(subtotal)}</strong>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Servico (10%)</span>
+                            <strong className="text-foreground">{formatPrice(serviceFeeAmount)}</strong>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-2">
+                            <span className="font-semibold text-foreground">Total da conta</span>
+                            <strong className="text-lg text-accent">{formatPrice(finalTotal)}</strong>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                            <input
+                              type="checkbox"
+                              checked={removeServiceFee}
+                              onChange={(event) =>
+                                setRemoveFeeByOrderId((current) => ({
+                                  ...current,
+                                  [order.id]: event.target.checked,
+                                }))
+                              }
+                            />
+                            Remover 10% do garcom nesta conta
+                          </label>
+
+                          <Button
+                            onClick={() => handleMarkOrderPaid(order)}
+                            disabled={markPaidMutation.isPending}
+                            className="bg-accent text-accent-foreground hover:bg-accent/90"
+                          >
+                            Receber no caixa
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>
@@ -1473,6 +1714,7 @@ export default function AdminPanel() {
                     >
                       <option value="waiter">Garcom</option>
                       <option value="kitchen">Cozinha</option>
+                      <option value="cashier">Caixa</option>
                       <option value="admin">Administrador</option>
                     </select>
                   </div>
@@ -1779,11 +2021,29 @@ export default function AdminPanel() {
                                 }))
                               }
                             />
+                            <div>
+                              <label className="mb-2 block text-sm font-semibold">
+                                Ajuste da foto no cardapio
+                              </label>
+                              <select
+                                value={formData.imageFit}
+                                onChange={(e) =>
+                                  setFormData((current) => ({
+                                    ...current,
+                                    imageFit: e.target.value === "contain" ? "contain" : "cover",
+                                  }))
+                                }
+                                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              >
+                                <option value="cover">Preencher (pode cortar)</option>
+                                <option value="contain">Encaixar sem cortar</option>
+                              </select>
+                            </div>
                             <div className="overflow-hidden rounded-[1.35rem] border border-border bg-muted">
                               <img
                                 src={formData.imageUrl || FALLBACK_PRODUCT_IMAGE}
                                 alt="Pre-visualizacao"
-                                className="h-52 w-full object-cover sm:h-60 lg:h-72"
+                                className={`h-52 w-full ${formData.imageFit === "contain" ? "object-contain bg-black/10 p-2" : "object-cover"} sm:h-60 lg:h-72`}
                               />
                             </div>
                           </div>
@@ -1850,7 +2110,7 @@ export default function AdminPanel() {
                     <img
                       src={product.imageUrl || FALLBACK_PRODUCT_IMAGE}
                       alt={product.name}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className={`h-full w-full ${product.imageFit === "contain" ? "object-contain bg-black/10 p-2" : "object-cover"} transition-transform duration-500 group-hover:scale-105`}
                     />
                     <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4">
                       <Badge variant="secondary" className="backdrop-blur">

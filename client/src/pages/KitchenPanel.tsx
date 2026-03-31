@@ -22,9 +22,7 @@ import {
   PackageCheck,
   Plus,
   RefreshCcw,
-  Search,
   ShieldCheck,
-  WalletCards,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -36,20 +34,10 @@ type KitchenOrder = {
   customerName: string;
   customerPhone: string | null;
   orderType: "dine_in" | "takeaway" | "reservation";
-  status:
-    | "pending"
-    | "new"
-    | "preparing"
-    | "ready"
-    | "awaiting_payment"
-    | "delivered"
-    | "cancelled";
+  status: "pending" | "new" | "preparing" | "ready" | "delivered" | "cancelled";
   tableNumber: number | null;
   tableLabel: string | null;
   estimatedReadyMinutes: number | null;
-  paymentMethod: "pix" | "card" | "cash" | null;
-  paymentNotes: string | null;
-  paidAt: Date | null;
   guestCount: number | null;
   notes: string | null;
   total: number;
@@ -71,7 +59,6 @@ type ProductOption = {
   name: string;
   price: number;
   categoryName: string | null;
-  imageUrl: string | null;
 };
 
 type OrderStatus = KitchenOrder["status"];
@@ -92,19 +79,9 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   new: "Aprovado",
   preparing: "Em preparo",
   ready: "Pronto",
-  awaiting_payment: "Aguardando pagamento",
   delivered: "Entregue",
   cancelled: "Cancelado",
 };
-
-const PAYMENT_METHOD_LABEL: Record<NonNullable<KitchenOrder["paymentMethod"]>, string> = {
-  pix: "Pix",
-  card: "Cartao",
-  cash: "Dinheiro",
-};
-
-const FALLBACK_PRODUCT_IMAGE =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='100%25' height='100%25' fill='%23322224'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23f2d2c5' font-family='Arial' font-size='34'>Fogareiro</text></svg>";
 
 const canAccessKitchenPanel = (role?: string | null) =>
   role === "kitchen" || role === "waiter";
@@ -182,8 +159,6 @@ export default function KitchenPanel() {
 
   const [isFinishedModalOpen, setIsFinishedModalOpen] = useState(false);
   const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [isCreateInternalOpen, setIsCreateInternalOpen] = useState(false);
   const previousPendingIdsRef = useRef<number[]>([]);
   const previousOverdueIdsRef = useRef<number[]>([]);
   const pendingAlertRef = useRef<ReturnType<typeof createLoopingAlert> | null>(null);
@@ -191,7 +166,6 @@ export default function KitchenPanel() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedTableId, setSelectedTableId] = useState("");
   const [notes, setNotes] = useState("");
-  const [productSearch, setProductSearch] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [draftQuantity, setDraftQuantity] = useState("1");
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
@@ -202,9 +176,6 @@ export default function KitchenPanel() {
   const [editSelectedProductId, setEditSelectedProductId] = useState("");
   const [editDraftQuantity, setEditDraftQuantity] = useState("1");
   const [editDraftItems, setEditDraftItems] = useState<DraftItem[]>([]);
-  const [paymentOrder, setPaymentOrder] = useState<KitchenOrder | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"pix" | "card" | "cash">("pix");
-  const [paymentNotes, setPaymentNotes] = useState("");
   const [estimateByOrderId, setEstimateByOrderId] = useState<Record<number, string>>({});
   const [nowTs, setNowTs] = useState(() => Date.now());
 
@@ -233,8 +204,6 @@ export default function KitchenPanel() {
           order.estimatedReadyMinutes === null || order.estimatedReadyMinutes === undefined
             ? null
             : Number(order.estimatedReadyMinutes),
-        paidAt:
-          order.paidAt === null || order.paidAt === undefined ? null : new Date(order.paidAt),
         items: order.items.map((item) => ({
           ...item,
           id: Number(item.id),
@@ -256,20 +225,6 @@ export default function KitchenPanel() {
       })),
     [productsQuery.data]
   );
-
-  const filteredProducts = useMemo(() => {
-    const normalizedSearch = productSearch.trim().toLowerCase();
-
-    if (!normalizedSearch) {
-      return products.slice(0, 8);
-    }
-
-    return products
-      .filter((product) =>
-        [product.name, product.categoryName ?? ""].join(" ").toLowerCase().includes(normalizedSearch)
-      )
-      .slice(0, 10);
-  }, [productSearch, products]);
 
   useEffect(() => {
     pendingAlertRef.current = createLoopingAlert();
@@ -293,12 +248,11 @@ export default function KitchenPanel() {
     const overdueIds = orders
       .filter((order) => {
         if (
-        order.status === "cancelled" ||
-        order.status === "delivered" ||
-        order.status === "ready" ||
-        order.status === "awaiting_payment" ||
-        !order.estimatedReadyMinutes
-      ) {
+          order.status === "cancelled" ||
+          order.status === "delivered" ||
+          order.status === "ready" ||
+          !order.estimatedReadyMinutes
+        ) {
           return false;
         }
 
@@ -345,7 +299,6 @@ export default function KitchenPanel() {
         new: 0,
         preparing: 0,
         ready: 0,
-        awaiting_payment: 0,
         delivered: 0,
         cancelled: 0,
       }
@@ -356,13 +309,11 @@ export default function KitchenPanel() {
         countByStatus.pending +
         countByStatus.new +
         countByStatus.preparing +
-        countByStatus.ready +
-        countByStatus.awaiting_payment,
+        countByStatus.ready,
       pendingOrders: countByStatus.pending,
       newOrders: countByStatus.new,
       preparingOrders: countByStatus.preparing,
       readyOrders: countByStatus.ready,
-      awaitingPaymentOrders: countByStatus.awaiting_payment,
       finishedOrders: countByStatus.delivered + countByStatus.cancelled,
     };
   }, [orders]);
@@ -380,17 +331,10 @@ export default function KitchenPanel() {
       new: 0,
       preparing: 1,
       ready: 2,
-      awaiting_payment: 3,
     };
 
     return orders
-      .filter(
-        (order) =>
-          order.status === "new" ||
-          order.status === "preparing" ||
-          order.status === "ready" ||
-          order.status === "awaiting_payment"
-      )
+      .filter((order) => order.status === "new" || order.status === "preparing" || order.status === "ready")
       .sort((a, b) => {
         const aRank = rank[a.status as keyof typeof rank] ?? 99;
         const bRank = rank[b.status as keyof typeof rank] ?? 99;
@@ -445,22 +389,12 @@ export default function KitchenPanel() {
         const dueAt = createdAt + order.estimatedReadyMinutes * 60_000;
         const diffMinutes = Math.round((dueAt - nowTs) / 60000);
 
-        if (order.status === "awaiting_payment") {
-          notices.push({
-            orderId: order.id,
-            tone: "info",
-            title: `Pedido #${order.id} aguardando pagamento`,
-            detail: "A equipe de salao pode registrar a forma de pagamento e encerrar a comanda.",
-          });
-          return;
-        }
-
         if (order.status === "ready") {
           notices.push({
             orderId: order.id,
             tone: "success",
             title: `Pedido #${order.id} pronto para entrega`,
-            detail: "Garcom pode levar para a mesa e mover para aguardando pagamento.",
+            detail: "A equipe ja pode retirar. O sistema finaliza automaticamente pelo tempo.",
           });
           return;
         }
@@ -521,7 +455,6 @@ export default function KitchenPanel() {
     const diffMinutes = Math.round((dueAt - nowTs) / 60000);
 
     if (order.status === "ready") return "Pedido pronto para sair";
-    if (order.status === "awaiting_payment") return "Aguardando pagamento na mesa";
     if (diffMinutes < 0) return `${Math.abs(diffMinutes)} min de atraso`;
     if (diffMinutes === 0) return "Prazo no limite";
     return `${diffMinutes} min restantes`;
@@ -530,11 +463,7 @@ export default function KitchenPanel() {
   const handleStatusChange = async (
     orderId: number,
     status: OrderStatus,
-    estimatedReadyMinutes?: number | null,
-    paymentPayload?: {
-      paymentMethod?: "pix" | "card" | "cash" | null;
-      paymentNotes?: string | null;
-    }
+    estimatedReadyMinutes?: number | null
   ) => {
     try {
       await withLoading(
@@ -543,51 +472,20 @@ export default function KitchenPanel() {
             id: orderId,
             status,
             estimatedReadyMinutes,
-            paymentMethod: paymentPayload?.paymentMethod,
-            paymentNotes: paymentPayload?.paymentNotes,
           }),
         { message: `Atualizando pedido para ${STATUS_LABEL[status]}` }
       );
       await ordersQuery.refetch();
       toast.success(`Pedido atualizado para "${STATUS_LABEL[status]}"`);
-      return true;
     } catch (error) {
       console.error(error);
       toast.error("Nao foi possivel atualizar o status do pedido");
-      return false;
     }
   };
 
   const handleAcceptOrder = async (orderId: number) => {
     const estimate = Math.max(1, Number(estimateByOrderId[orderId] || "20") || 20);
     await handleStatusChange(orderId, "new", estimate);
-  };
-
-  const openPaymentModal = (order: KitchenOrder) => {
-    setPaymentOrder(order);
-    setPaymentMethod(order.paymentMethod ?? "pix");
-    setPaymentNotes(order.paymentNotes ?? "");
-    setIsPaymentModalOpen(true);
-  };
-
-  const closePaymentModal = () => {
-    setIsPaymentModalOpen(false);
-    setPaymentOrder(null);
-    setPaymentMethod("pix");
-    setPaymentNotes("");
-  };
-
-  const handleFinalizePayment = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!paymentOrder) return;
-
-    const saved = await handleStatusChange(paymentOrder.id, "delivered", undefined, {
-      paymentMethod,
-      paymentNotes: paymentNotes.trim() || null,
-    });
-    if (saved) {
-      closePaymentModal();
-    }
   };
 
   const addDraftItem = () => {
@@ -626,7 +524,6 @@ export default function KitchenPanel() {
     });
 
     setSelectedProductId("");
-    setProductSearch("");
     setDraftQuantity("1");
   };
 
@@ -787,7 +684,6 @@ export default function KitchenPanel() {
       );
 
       resetInternalOrderForm();
-      setIsCreateInternalOpen(false);
       await ordersQuery.refetch();
       toast.success("Pedido presencial criado sem etapa de aprovacao");
     } catch (error) {
@@ -892,9 +788,6 @@ export default function KitchenPanel() {
     if (status === "ready") {
       return "border-emerald-400/25 bg-[linear-gradient(180deg,rgba(26,44,35,0.92),rgba(22,28,25,0.98))] ring-1 ring-emerald-400/20";
     }
-    if (status === "awaiting_payment") {
-      return "border-violet-300/25 bg-[linear-gradient(180deg,rgba(48,34,54,0.94),rgba(29,22,34,0.98))] ring-1 ring-violet-300/18";
-    }
     if (status === "cancelled") {
       return "border-destructive/20 bg-[linear-gradient(180deg,rgba(52,23,29,0.95),rgba(33,16,21,0.98))]";
     }
@@ -925,10 +818,6 @@ export default function KitchenPanel() {
               {order.guestCount && <p>Pessoas: {order.guestCount}</p>}
               <p>Codigo: {order.trackingCode}</p>
               {order.estimatedReadyMinutes ? <p>Previsao: {order.estimatedReadyMinutes} min</p> : null}
-              {order.paymentMethod ? (
-                <p>Pagamento: {PAYMENT_METHOD_LABEL[order.paymentMethod]}</p>
-              ) : null}
-              {order.paidAt ? <p>Pago em: {formatDateTime(order.paidAt)}</p> : null}
               {getRemainingLabel(order) ? (
                 <p className="font-medium text-foreground">Andamento do prazo: {getRemainingLabel(order)}</p>
               ) : null}
@@ -1003,20 +892,6 @@ export default function KitchenPanel() {
           </div>
         )}
 
-        {(order.paymentMethod || order.paymentNotes) && (
-          <div className="rounded-xl border border-border/70 bg-background/50 p-3">
-            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Pagamento</p>
-            {order.paymentMethod ? (
-              <p className="mt-2 text-sm text-foreground">
-                Forma registrada: {PAYMENT_METHOD_LABEL[order.paymentMethod]}
-              </p>
-            ) : null}
-            {order.paymentNotes ? (
-              <p className="mt-1 text-sm text-muted-foreground">{order.paymentNotes}</p>
-            ) : null}
-          </div>
-        )}
-
         {order.status === "pending" ? (
           <div className="space-y-3">
             <Button
@@ -1083,70 +958,10 @@ export default function KitchenPanel() {
               Editar pedido
             </Button>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {order.status !== "new" ? null : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleStatusChange(order.id, "preparing")}
-                  disabled={updateStatusMutation.isPending}
-                >
-                  Marcar em preparo
-                </Button>
-              )}
-              {order.status !== "preparing" ? null : (
-                <Button
-                  type="button"
-                  className="bg-accent text-accent-foreground hover:bg-accent/90"
-                  onClick={() => handleStatusChange(order.id, "ready")}
-                  disabled={updateStatusMutation.isPending}
-                >
-                  Marcar como pronto
-                </Button>
-              )}
-              {order.status === "ready" && isWaiterView ? (
-                <Button
-                  type="button"
-                  className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                  onClick={() => handleStatusChange(order.id, "awaiting_payment")}
-                  disabled={updateStatusMutation.isPending}
-                >
-                  <WalletCards className="h-4 w-4" />
-                  Aguardando pagamento
-                </Button>
-              ) : null}
-              {order.status === "awaiting_payment" && isWaiterView ? (
-                <Button
-                  type="button"
-                  className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                  onClick={() => openPaymentModal(order)}
-                  disabled={updateStatusMutation.isPending}
-                >
-                  <PackageCheck className="h-4 w-4" />
-                  Registrar pagamento e encerrar
-                </Button>
-              ) : null}
-              {order.status === "ready" && !isWaiterView ? (
-                <div className="rounded-2xl border border-border/70 bg-background/35 px-4 py-3 text-sm text-muted-foreground sm:col-span-2">
-                  Aguardando atendimento do garcom para seguir ao pagamento da mesa.
-                </div>
-              ) : null}
-              {order.status === "awaiting_payment" && !isWaiterView ? (
-                <div className="rounded-2xl border border-border/70 bg-background/35 px-4 py-3 text-sm text-muted-foreground sm:col-span-2">
-                  Pagamento aguardando registro no painel do garcom.
-                </div>
-              ) : null}
+            <div className="rounded-xl border border-border/70 bg-background/45 p-3 text-sm text-muted-foreground">
+              Fluxo automatico ativo: com base no tempo informado, o pedido avanca sozinho para
+              "Em preparo", depois "Pronto" e por fim "Entregue".
             </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full text-destructive hover:bg-destructive/10"
-              onClick={() => handleStatusChange(order.id, "cancelled")}
-              disabled={updateStatusMutation.isPending}
-            >
-              Cancelar pedido
-            </Button>
           </>
         )}
       </CardContent>
@@ -1191,7 +1006,7 @@ export default function KitchenPanel() {
       </div>
 
       <main className="container mx-auto space-y-6 py-6 md:space-y-8 md:py-8">
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <Card className="fogareiro-admin-metric border-border/70 bg-card/90">
             <CardContent className="p-4 sm:p-5">
               <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
@@ -1232,55 +1047,13 @@ export default function KitchenPanel() {
               </p>
             </CardContent>
           </Card>
-          <Card className="fogareiro-admin-metric border-border/70 bg-card/90">
+          <Card className="fogareiro-admin-metric col-span-2 border-border/70 bg-card/90 lg:col-span-1">
             <CardContent className="p-4 sm:p-5">
               <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
                 Prontos
               </p>
               <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
                 {stats.readyOrders}
-              </p>
-            </CardContent>
-          </Card>
-          {canCreateInternal ? (
-            <Button
-              type="button"
-              onClick={() => setIsCreateInternalOpen(true)}
-              className="fogareiro-admin-metric relative h-full min-h-[6.9rem] overflow-hidden rounded-[1.25rem] border border-accent/30 bg-[radial-gradient(circle_at_top_right,rgba(255,186,160,0.18),transparent_34%),linear-gradient(180deg,rgba(108,55,44,0.92),rgba(66,34,30,0.96))] p-0 text-left text-[#ffe6da] shadow-[0_18px_40px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-[0_24px_46px_rgba(0,0,0,0.18)]"
-            >
-              <div className="flex h-full flex-col justify-between p-4 sm:p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="rounded-full border border-white/15 bg-white/8 p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-                    <Plus className="h-4 w-4" />
-                  </div>
-                  <span className="rounded-full border border-white/10 bg-black/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#ffd5c6]">
-                    Atalho
-                  </span>
-                </div>
-
-                <div className="mt-5">
-                  <p className="text-sm font-semibold leading-none text-[#ffd5c6]">
-                    Abrir rapido
-                  </p>
-                  <p className="mt-2 text-base font-bold leading-tight text-white sm:text-lg">
-                    Novo pedido presencial
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-[#f0c6b7]">
-                    Toque para montar a comanda da mesa sem sair da fila.
-                  </p>
-                </div>
-              </div>
-            </Button>
-          ) : (
-            <div className="hidden lg:block" />
-          )}
-          <Card className="fogareiro-admin-metric col-span-2 border-border/70 bg-card/90 lg:col-span-1">
-            <CardContent className="p-4 sm:p-5">
-              <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                Pagamento
-              </p>
-              <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
-                {stats.awaitingPaymentOrders}
               </p>
             </CardContent>
           </Card>
@@ -1304,43 +1077,6 @@ export default function KitchenPanel() {
             </div>
           </section>
         )}
-
-        {canCreateInternal && (
-          <section className="rounded-[1.75rem] border border-border/70 bg-card/92 p-4 shadow-[0_18px_46px_rgba(0,0,0,0.14)] sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Plus className="h-4 w-4 text-accent" />
-                  Pedido presencial rapido
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Abra um pedido interno em poucos toques, sem ocupar espaco fixo da tela no celular.
-                </p>
-              </div>
-              <Button
-                type="button"
-                className="w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto"
-                onClick={() => setIsCreateInternalOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-                Novo pedido presencial
-              </Button>
-            </div>
-          </section>
-        )}
-
-        {canCreateInternal ? (
-          <div className="pointer-events-none fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 sm:hidden">
-            <Button
-              type="button"
-              onClick={() => setIsCreateInternalOpen(true)}
-              className="pointer-events-auto h-14 rounded-full border border-accent/30 bg-[linear-gradient(135deg,rgba(255,150,126,0.98),rgba(233,111,86,0.98))] px-5 text-[15px] font-semibold text-accent-foreground shadow-[0_18px_40px_rgba(0,0,0,0.28)] hover:scale-[1.01] hover:bg-accent"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Novo pedido
-            </Button>
-          </div>
-        ) : null}
 
         <section className="rounded-[1.75rem] border border-border/70 bg-card/90 p-4 shadow-[0_18px_46px_rgba(0,0,0,0.14)] sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -1465,12 +1201,165 @@ export default function KitchenPanel() {
                 <p>Admin e cozinha recebem alerta e podem aceitar o pedido.</p>
                 <p>
                   {isWaiterView
-                    ? "Voce pode abrir pedido presencial manual, editar a comanda, registrar pagamento e encerrar a mesa."
-                    : "Somente o garcom pode abrir pedido presencial manual e registrar a etapa final de pagamento da mesa."}
+                    ? "Voce pode abrir pedido presencial manual, editar a comanda e acompanhar o andamento da cozinha."
+                    : "Somente o garcom pode abrir pedido presencial manual, sempre com mesa, nome e telefone."}
                 </p>
               </CardContent>
             </Card>
 
+            {canCreateInternal && (
+              <Card className="border-border/70 bg-card/92 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Plus className="h-5 w-5 text-accent" />
+                    Novo pedido presencial
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleCreateInternalOrder} className="space-y-4">
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">
+                          Nome do cliente ou identificacao
+                        </label>
+                        <Input
+                          value={customerName}
+                          onChange={(event) => setCustomerName(event.target.value)}
+                          placeholder="Ex: Balcao, Mesa 4, Maria"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">Mesa</label>
+                        <select
+                          value={selectedTableId}
+                          onChange={(event) => setSelectedTableId(event.target.value)}
+                          className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="">Selecione a mesa</option>
+                          {(tablesQuery.data ?? []).map((table) => (
+                            <option key={table.id} value={table.id}>
+                              Mesa {table.number}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">Telefone</label>
+                        <Input
+                          value={customerPhone}
+                          onChange={(event) => setCustomerPhone(event.target.value)}
+                          placeholder="Obrigatorio para acompanhamento"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold">Observacoes</label>
+                        <textarea
+                          value={notes}
+                          onChange={(event) => setNotes(event.target.value)}
+                          rows={3}
+                          placeholder="Detalhes do atendimento interno"
+                          className="w-full rounded-lg border border-input bg-background p-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
+                      <p className="mb-3 text-sm font-semibold text-foreground">
+                        Adicionar item
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_110px]">
+                        <select
+                          value={selectedProductId}
+                          onChange={(event) => setSelectedProductId(event.target.value)}
+                          className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="">Selecione um item do cardapio</option>
+                          {products.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name} - {formatPrice(product.price)}
+                            </option>
+                          ))}
+                        </select>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={draftQuantity}
+                          onChange={(event) => setDraftQuantity(event.target.value)}
+                          placeholder="Qtd"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-3 w-full"
+                        onClick={addDraftItem}
+                      >
+                        Adicionar ao pedido
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {draftItems.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
+                          Nenhum item adicionado ainda.
+                        </div>
+                      ) : (
+                        draftItems.map((item) => (
+                          <div
+                            key={item.productId}
+                            className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/45 p-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="font-semibold text-foreground">
+                                  {item.quantity}x {item.productName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {formatPrice(item.unitPrice)} cada
+                                </p>
+                              </div>
+                              <p className="font-semibold text-accent">
+                                {formatPrice(item.totalPrice)}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => removeDraftItem(item.productId)}
+                            >
+                              Remover
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl bg-muted/55 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-muted-foreground">Total interno</span>
+                        <span className="text-xl font-bold text-accent">
+                          {formatPrice(internalTotal)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={createInternalMutation.isPending}
+                      className="w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                    >
+                      <ChefHat className="h-4 w-4" />
+                      {createInternalMutation.isPending
+                        ? "Criando pedido..."
+                        : "Criar pedido interno"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
           </aside>
         </section>
 
@@ -1663,340 +1552,6 @@ export default function KitchenPanel() {
                 >
                   {updateDetailsMutation.isPending ? "Salvando..." : "Salvar alteracoes"}
                 </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isPaymentModalOpen} onOpenChange={(open) => (open ? setIsPaymentModalOpen(true) : closePaymentModal())}>
-          <DialogContent className="max-h-[calc(100dvh-1rem)] max-w-[min(620px,calc(100vw-1rem))] border-border/70 bg-card/98 sm:max-w-[min(620px,calc(100vw-2rem))]">
-            <DialogHeader className="pr-8">
-              <DialogTitle>
-                {paymentOrder ? `Recebimento do pedido #${paymentOrder.id}` : "Registrar pagamento"}
-              </DialogTitle>
-              <DialogDescription>
-                Informe como o pagamento foi recebido na mesa para encerrar a comanda com rastreabilidade.
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleFinalizePayment} className="space-y-4">
-              {paymentOrder ? (
-                <div className="rounded-2xl border border-border/70 bg-background/35 p-4 text-sm text-muted-foreground">
-                  <p className="font-semibold text-foreground">{paymentOrder.customerName}</p>
-                  <p className="mt-1">
-                    {paymentOrder.tableNumber ? `Mesa ${paymentOrder.tableNumber}` : "Sem mesa vinculada"} • {formatPrice(paymentOrder.total)}
-                  </p>
-                </div>
-              ) : null}
-
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-foreground">Forma de pagamento</p>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {(["pix", "card", "cash"] as const).map((method) => (
-                    <Button
-                      key={method}
-                      type="button"
-                      variant={paymentMethod === method ? "default" : "outline"}
-                      className={paymentMethod === method ? "bg-accent text-accent-foreground" : ""}
-                      onClick={() => setPaymentMethod(method)}
-                    >
-                      {PAYMENT_METHOD_LABEL[method]}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold">Observacao do recebimento</label>
-                <textarea
-                  value={paymentNotes}
-                  onChange={(event) => setPaymentNotes(event.target.value)}
-                  rows={4}
-                  placeholder="Ex: pago em duas etapas, troco para 100, mesa liberada pelo garcom..."
-                  className="w-full rounded-lg border border-input bg-background p-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                <Button type="button" variant="outline" onClick={closePaymentModal}>
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                  disabled={updateStatusMutation.isPending}
-                >
-                  <WalletCards className="h-4 w-4" />
-                  {updateStatusMutation.isPending ? "Salvando..." : "Confirmar pagamento e encerrar"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={isCreateInternalOpen}
-          onOpenChange={(open) => (open ? setIsCreateInternalOpen(true) : setIsCreateInternalOpen(false))}
-        >
-          <DialogContent className="h-[calc(100dvh-0.5rem)] max-h-[calc(100dvh-0.5rem)] max-w-[calc(100vw-0.5rem)] grid-rows-[auto_minmax(0,1fr)_auto] border-border/70 bg-card/98 p-3 sm:h-auto sm:max-h-[calc(100dvh-1rem)] sm:max-w-[min(860px,calc(100vw-2rem))] sm:p-4">
-            <DialogHeader className="pr-10 pb-1 text-left sm:pr-8">
-              <DialogTitle>Novo pedido presencial</DialogTitle>
-              <DialogDescription>
-                Monte a comanda da mesa sem poluir a tela principal. Ideal para uso rapido no salao e no celular.
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleCreateInternalOrder} className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-3 sm:gap-4">
-              <div className="fogareiro-scrollbar grid min-h-0 gap-3 overflow-y-auto pr-1 pb-24 sm:pr-2 sm:pb-2 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-accent/25 bg-[linear-gradient(180deg,rgba(255,164,135,0.08),rgba(255,255,255,0.02))] p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent/90">
-                          Comece por aqui
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Identifique a mesa e adicione os itens do atendimento em poucos toques.
-                        </p>
-                      </div>
-                      <div className="rounded-full border border-accent/20 bg-accent/10 p-2 text-accent">
-                        <ChefHat className="h-4 w-4" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-foreground">1. Dados da mesa</p>
-                      <span className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        obrigatorio
-                      </span>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="mb-2 block text-sm font-semibold">
-                          Nome do cliente ou identificacao
-                        </label>
-                        <Input
-                          value={customerName}
-                          onChange={(event) => setCustomerName(event.target.value)}
-                          placeholder="Ex: Balcao, Mesa 4, Maria"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-semibold">Mesa</label>
-                        <select
-                          value={selectedTableId}
-                          onChange={(event) => setSelectedTableId(event.target.value)}
-                          className="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        >
-                          <option value="">Selecione a mesa</option>
-                          {(tablesQuery.data ?? []).map((table) => (
-                            <option key={table.id} value={table.id}>
-                              Mesa {table.number}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-semibold">Telefone</label>
-                        <Input
-                          value={customerPhone}
-                          onChange={(event) => setCustomerPhone(event.target.value)}
-                          placeholder="Obrigatorio para acompanhamento"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-semibold">Observacoes</label>
-                        <textarea
-                          value={notes}
-                          onChange={(event) => setNotes(event.target.value)}
-                          rows={3}
-                          placeholder="Opcional: aniversariante, preferencia da mesa, detalhes do atendimento..."
-                          className="w-full rounded-lg border border-input bg-background p-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-foreground">2. Adicionar item</p>
-                      <span className="text-xs text-muted-foreground">Pesquise e toque no item</span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_110px]">
-                      <div className="relative">
-                        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          value={productSearch}
-                          onChange={(event) => setProductSearch(event.target.value)}
-                          placeholder="Digite o nome do produto"
-                          className="h-12 pl-10"
-                        />
-                      </div>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={draftQuantity}
-                        onChange={(event) => setDraftQuantity(event.target.value)}
-                        placeholder="Qtd"
-                        className="h-12"
-                      />
-                    </div>
-
-                    <div className="mt-3 rounded-2xl border border-border/70 bg-background/30 p-2">
-                      <div className="mb-2 flex flex-col gap-1 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                          Resultados
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {filteredProducts.length} exibido(s)
-                        </span>
-                      </div>
-
-                      <div className="fogareiro-scrollbar max-h-[14rem] space-y-2 overflow-y-auto pr-1 sm:max-h-[17.5rem]">
-                        {filteredProducts.length === 0 ? (
-                          <div className="rounded-xl border border-dashed border-border/70 px-3 py-4 text-sm text-muted-foreground">
-                            Nenhum item encontrado com esse nome.
-                          </div>
-                        ) : (
-                          filteredProducts.map((product) => {
-                            const isSelected = selectedProductId === String(product.id);
-
-                            return (
-                              <button
-                                key={product.id}
-                                type="button"
-                                onClick={() => setSelectedProductId(String(product.id))}
-                                className={`flex w-full items-center gap-3 rounded-2xl border p-2 text-left transition ${
-                                  isSelected
-                                    ? "border-accent/50 bg-accent/10 shadow-[0_10px_25px_rgba(0,0,0,0.12)]"
-                                    : "border-border/70 bg-background/55 hover:border-accent/30 hover:bg-background/75"
-                                }`}
-                              >
-                                <img
-                                  src={product.imageUrl || FALLBACK_PRODUCT_IMAGE}
-                                  alt={product.name}
-                                  className="h-14 w-14 rounded-xl object-cover"
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-foreground">
-                                    {product.name}
-                                  </p>
-                                  <p className="truncate text-xs text-muted-foreground">
-                                    {product.categoryName || "Cardapio"}
-                                  </p>
-                                  <p className="mt-1 text-sm font-semibold text-accent">
-                                    {formatPrice(product.price)}
-                                  </p>
-                                </div>
-                                <div
-                                  className={`rounded-full px-3 py-2 text-xs font-semibold ${
-                                    isSelected
-                                      ? "bg-accent text-accent-foreground"
-                                      : "border border-border/70 bg-background/70 text-foreground"
-                                  }`}
-                                >
-                                  {isSelected ? "Selecionado" : "Escolher"}
-                                </div>
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-
-                    <Button
-                      type="button"
-                      className="mt-3 h-11 w-full gap-2 bg-accent text-accent-foreground shadow-[0_12px_24px_rgba(0,0,0,0.18)] hover:bg-accent/90"
-                      onClick={addDraftItem}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Adicionar item selecionado
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-foreground">3. Itens da comanda</p>
-                      <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                        {draftItems.length} item(ns)
-                      </span>
-                    </div>
-
-                    <div className="fogareiro-scrollbar max-h-[28rem] space-y-3 overflow-y-auto pr-1 sm:max-h-[24rem]">
-                      {draftItems.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
-                          Nenhum item adicionado ainda.
-                        </div>
-                      ) : (
-                        draftItems.map((item) => (
-                          <div
-                            key={item.productId}
-                            className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/45 p-3"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <p className="font-semibold text-foreground">
-                                  {item.quantity}x {item.productName}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {formatPrice(item.unitPrice)} cada
-                                </p>
-                              </div>
-                              <p className="font-semibold text-accent">
-                                {formatPrice(item.totalPrice)}
-                              </p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="h-10"
-                              onClick={() => removeDraftItem(item.productId)}
-                            >
-                              Remover
-                            </Button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-accent/20 bg-[linear-gradient(180deg,rgba(255,164,135,0.12),rgba(255,255,255,0.03))] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">Resumo do pedido</p>
-                        <p className="text-xs text-muted-foreground">
-                          Revise o total antes de confirmar a comanda.
-                        </p>
-                      </div>
-                      <span className="text-xl font-bold text-accent">
-                        {formatPrice(internalTotal)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="sticky bottom-0 -mx-3 border-t border-border/70 bg-card/98/95 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:pt-0 sm:pb-0 sm:backdrop-blur-none">
-                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                  <Button type="button" variant="outline" className="h-11" onClick={() => setIsCreateInternalOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createInternalMutation.isPending}
-                    className="h-11 w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto"
-                  >
-                    <ChefHat className="h-4 w-4" />
-                    {createInternalMutation.isPending ? "Criando pedido..." : "Criar pedido interno"}
-                  </Button>
-                </div>
               </div>
             </form>
           </DialogContent>

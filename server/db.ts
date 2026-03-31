@@ -1,8 +1,9 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import {
+  appSettings,
   categories,
   diningTables,
   InsertOrder,
@@ -19,6 +20,18 @@ import { ENV } from "./_core/env";
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: postgres.Sql | null = null;
 let _schemaReady: Promise<void> | null = null;
+const DEFAULT_AUTO_PREPARING_PERCENT = 15;
+const DEFAULT_AUTO_DELIVERED_GRACE_MINUTES = 8;
+const DEFAULT_SERVICE_FEE_PERCENT = 10;
+
+const ORDER_STATUS_RANK: Record<NonNullable<InsertOrder["status"]>, number> = {
+  pending: 0,
+  new: 1,
+  preparing: 2,
+  ready: 3,
+  delivered: 4,
+  cancelled: 5,
+};
 
 export type ProductRecord = typeof products.$inferSelect & {
   categoryName: string | null;
@@ -28,6 +41,10 @@ export type OrderRecord = typeof orders.$inferSelect & {
   tableNumber: number | null;
   tableLabel: string | null;
   items: Array<typeof orderItems.$inferSelect>;
+};
+
+export type CashierOrderRecord = OrderRecord & {
+  serviceFeeDefault: number;
 };
 
 type ProductPayload = Omit<InsertProduct, "categoryId"> & {
@@ -67,18 +84,11 @@ type UpdateOrderDetailsPayload = {
   items: OrderItemPayload[];
 };
 
-type UpdateOrderStatusMeta = {
-  estimatedReadyMinutes?: number | null;
-  paymentMethod?: string | null;
-  paymentNotes?: string | null;
-  paidAt?: Date | null;
-};
-
 type LocalUserPayload = {
   name: string;
   email: string;
   password: string;
-  role: "admin" | "kitchen" | "waiter";
+  role: "admin" | "kitchen" | "waiter" | "cashier";
 };
 
 type DiningTablePayload = {
@@ -86,6 +96,8 @@ type DiningTablePayload = {
   label?: string | null;
   isActive?: boolean;
 };
+
+type PaymentMethod = "cash" | "card" | "pix";
 
 function createTrackingCode() {
   return `FGR-${Date.now().toString(36).toUpperCase()}-${Math.random()
@@ -104,6 +116,94 @@ function normalizePhone(value: string) {
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
+}
+
+async function getAutoStatusConfig(db: ReturnType<typeof drizzle>) {
+  const [settings] = await db.select().from(appSettings).limit(1);
+
+  if (!settings) {
+    const [created] = await db
+      .insert(appSettings)
+      .values({
+        autoPreparingPercent: DEFAULT_AUTO_PREPARING_PERCENT,
+        autoDeliveredGraceMinutes: DEFAULT_AUTO_DELIVERED_GRACE_MINUTES,
+      })
+      .returning();
+
+    return created;
+  }
+
+  return settings;
+}
+
+function getTimedAutoStatus(
+  order: typeof orders.$inferSelect,
+  nowTs: number,
+  autoPreparingPercent: number,
+  autoDeliveredGraceMinutes: number
+): InsertOrder["status"] {
+  if (!order.estimatedReadyMinutes) return order.status;
+  if (order.status === "pending" || order.status === "cancelled" || order.status === "delivered") {
+    return order.status;
+  }
+
+  const estimatedMs = Math.max(1, Number(order.estimatedReadyMinutes)) * 60_000;
+  const elapsedMs = Math.max(0, nowTs - new Date(order.createdAt).getTime());
+  const preparingThreshold = Math.max(0, Math.min(100, autoPreparingPercent)) / 100;
+  const deliveredGraceMs = Math.max(0, autoDeliveredGraceMinutes) * 60_000;
+
+  let nextStatus: InsertOrder["status"] = "new";
+  if (elapsedMs >= estimatedMs + deliveredGraceMs) {
+    nextStatus = "delivered";
+  } else if (elapsedMs >= estimatedMs) {
+    nextStatus = "ready";
+  } else if (elapsedMs >= estimatedMs * preparingThreshold) {
+    nextStatus = "preparing";
+  }
+
+  if (ORDER_STATUS_RANK[nextStatus] < ORDER_STATUS_RANK[order.status]) {
+    return order.status;
+  }
+
+  return nextStatus;
+}
+
+async function syncTimedOrderStatuses(db: ReturnType<typeof drizzle>) {
+  const settings = await getAutoStatusConfig(db);
+  const baseOrders = await db
+    .select()
+    .from(orders)
+    .where(inArray(orders.status, ["new", "preparing", "ready"]));
+
+  if (baseOrders.length === 0) return;
+
+  const nowTs = Date.now();
+  const updates = baseOrders
+    .map((order) => ({
+      id: Number(order.id),
+      nextStatus: getTimedAutoStatus(
+        order,
+        nowTs,
+        Number(settings.autoPreparingPercent ?? DEFAULT_AUTO_PREPARING_PERCENT),
+        Number(settings.autoDeliveredGraceMinutes ?? DEFAULT_AUTO_DELIVERED_GRACE_MINUTES)
+      ),
+      currentStatus: order.status,
+    }))
+    .filter((entry) => entry.nextStatus !== entry.currentStatus);
+
+  if (updates.length === 0) return;
+
+  await Promise.all(
+    updates.map((entry) =>
+      db
+        .update(orders)
+        .set({
+          status: entry.nextStatus,
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, entry.id))
+    )
+  );
 }
 
 function hashPassword(password: string) {
@@ -156,6 +256,15 @@ async function ensureAppSchema(sql: postgres.Sql) {
     do $$
     begin
       alter type public.user_role add value if not exists 'waiter';
+    exception
+      when duplicate_object then null;
+    end $$;
+  `;
+
+  await sql`
+    do $$
+    begin
+      alter type public.user_role add value if not exists 'cashier';
     exception
       when duplicate_object then null;
     end $$;
@@ -215,15 +324,6 @@ async function ensureAppSchema(sql: postgres.Sql) {
   `;
 
   await sql`
-    do $$
-    begin
-      alter type public.order_status add value if not exists 'awaiting_payment' before 'delivered';
-    exception
-      when duplicate_object then null;
-    end $$;
-  `;
-
-  await sql`
     create table if not exists public.categories (
       id bigserial primary key,
       name varchar(120) not null unique,
@@ -241,6 +341,7 @@ async function ensureAppSchema(sql: postgres.Sql) {
       description text,
       price integer not null,
       "imageUrl" text,
+      "imageFit" varchar(24) not null default 'cover',
       "imageKey" varchar(255),
       ingredients text,
       "isActive" boolean not null default true,
@@ -252,6 +353,11 @@ async function ensureAppSchema(sql: postgres.Sql) {
   await sql`
     alter table public.products
     add column if not exists "categoryId" bigint references public.categories(id) on delete set null
+  `;
+
+  await sql`
+    alter table public.products
+    add column if not exists "imageFit" varchar(24) not null default 'cover'
   `;
 
   await sql`
@@ -281,13 +387,15 @@ async function ensureAppSchema(sql: postgres.Sql) {
       status public.order_status not null default 'new',
       "tableId" bigint references public.dining_tables(id) on delete set null,
       "estimatedReadyMinutes" integer,
-      "paymentMethod" varchar(20),
-      "paymentNotes" text,
-      "paidAt" timestamptz,
       notes text,
       "guestCount" integer,
       "reservationAt" timestamptz,
       total integer not null,
+      "isPaid" boolean not null default false,
+      "paidAt" timestamptz,
+      "serviceFeeApplied" boolean not null default true,
+      "serviceFeeAmount" integer not null default 0,
+      "paidTotal" integer,
       "createdAt" timestamptz not null default now(),
       "updatedAt" timestamptz not null default now()
     )
@@ -305,17 +413,57 @@ async function ensureAppSchema(sql: postgres.Sql) {
 
   await sql`
     alter table public.orders
-    add column if not exists "paymentMethod" varchar(20)
-  `;
-
-  await sql`
-    alter table public.orders
-    add column if not exists "paymentNotes" text
+    add column if not exists "isPaid" boolean not null default false
   `;
 
   await sql`
     alter table public.orders
     add column if not exists "paidAt" timestamptz
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "serviceFeeApplied" boolean not null default true
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "serviceFeeAmount" integer not null default 0
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "paidTotal" integer
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "paymentMethod" varchar(24)
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "amountReceived" integer
+  `;
+
+  await sql`
+    alter table public.orders
+    add column if not exists "changeDue" integer
+  `;
+
+  await sql`
+    create table if not exists public.app_settings (
+      id bigserial primary key,
+      "autoPreparingPercent" integer not null default 15,
+      "autoDeliveredGraceMinutes" integer not null default 8,
+      "updatedAt" timestamptz not null default now()
+    )
+  `;
+
+  await sql`
+    insert into public.app_settings ("autoPreparingPercent", "autoDeliveredGraceMinutes")
+    select 15, 8
+    where not exists (select 1 from public.app_settings)
   `;
 
   await sql`
@@ -492,6 +640,12 @@ async function ensureDefaultLocalUsers() {
       email: "cozinha@fogareiroitz.com",
       password: "Fogareiro@Cozinha2026",
       role: "kitchen",
+    },
+    {
+      name: "Caixa",
+      email: "caixa@fogareiroitz.com",
+      password: "Fogareiro@Caixa2026",
+      role: "cashier",
     },
   ];
 
@@ -729,6 +883,7 @@ export async function getAllProducts(includeInactive = false): Promise<ProductRe
       description: products.description,
       price: products.price,
       imageUrl: products.imageUrl,
+      imageFit: products.imageFit,
       imageKey: products.imageKey,
       ingredients: products.ingredients,
       isActive: products.isActive,
@@ -755,6 +910,7 @@ export async function getProductById(id: number): Promise<ProductRecord | undefi
       description: products.description,
       price: products.price,
       imageUrl: products.imageUrl,
+      imageFit: products.imageFit,
       imageKey: products.imageKey,
       ingredients: products.ingredients,
       isActive: products.isActive,
@@ -795,6 +951,7 @@ export async function updateProduct(id: number, data: Partial<ProductPayload>) {
   if (data.description !== undefined) updateData.description = data.description;
   if (data.price !== undefined) updateData.price = data.price;
   if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
+  if (data.imageFit !== undefined) updateData.imageFit = data.imageFit;
   if (data.imageKey !== undefined) updateData.imageKey = data.imageKey;
   if (data.ingredients !== undefined) updateData.ingredients = data.ingredients;
   if (data.isActive !== undefined) updateData.isActive = data.isActive;
@@ -818,6 +975,7 @@ export async function deleteProduct(id: number) {
 export async function getActiveDiningTables() {
   const db = await getDb();
   if (!db) return [];
+  await syncTimedOrderStatuses(db);
 
   const tables = await db
     .select()
@@ -828,7 +986,7 @@ export async function getActiveDiningTables() {
   const activeOrders = await db
     .select({ tableId: orders.tableId })
     .from(orders)
-    .where(inArray(orders.status, ["pending", "new", "preparing", "ready", "awaiting_payment"]));
+    .where(inArray(orders.status, ["pending", "new", "preparing", "ready"]));
 
   const occupiedTableIds = new Set(
     activeOrders
@@ -846,6 +1004,7 @@ export async function getDiningTableByPublicToken(
 ) {
   const db = await getDb();
   if (!db) return undefined;
+  await syncTimedOrderStatuses(db);
 
   const normalized = publicToken.trim();
   const [table] = await db
@@ -863,7 +1022,7 @@ export async function getDiningTableByPublicToken(
       .where(
         and(
           eq(orders.tableId, Number(table.id)),
-          inArray(orders.status, ["pending", "new", "preparing", "ready", "awaiting_payment"])
+          inArray(orders.status, ["pending", "new", "preparing", "ready"])
         )
       )
       .limit(1);
@@ -988,6 +1147,7 @@ export async function createOrder(data: CreateOrderPayload) {
 export async function getAllOrders() {
   const db = await getDb();
   if (!db) return [];
+  await syncTimedOrderStatuses(db);
 
   const baseOrders = await db.select().from(orders).orderBy(asc(orders.createdAt));
   const hydrated = await hydrateOrders(baseOrders);
@@ -996,6 +1156,165 @@ export async function getAllOrders() {
 
 export async function getKitchenOrders() {
   return getAllOrders();
+}
+
+export async function getCashierOrders(): Promise<CashierOrderRecord[]> {
+  const allOrders = await getAllOrders();
+  return allOrders
+    .filter((order) => order.status !== "cancelled" && !order.isPaid)
+    .map((order) => ({
+      ...order,
+      serviceFeeDefault: DEFAULT_SERVICE_FEE_PERCENT,
+    }));
+}
+
+export async function markOrderAsPaid(
+  id: number,
+  paymentMethod: PaymentMethod,
+  removeServiceFee = false,
+  amountReceived?: number | null
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [existing] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+  if (!existing) {
+    throw new Error("Pedido nao encontrado");
+  }
+  if (existing.status === "cancelled") {
+    throw new Error("Pedido cancelado nao pode ser pago");
+  }
+  if (existing.isPaid) {
+    throw new Error("Pedido ja foi pago");
+  }
+
+  const subtotal = Number(existing.total ?? 0);
+  const serviceFeeApplied = !removeServiceFee;
+  const serviceFeeAmount = serviceFeeApplied
+    ? Math.round((subtotal * DEFAULT_SERVICE_FEE_PERCENT) / 100)
+    : 0;
+  const paidTotal = subtotal + serviceFeeAmount;
+  const normalizedAmountReceived =
+    paymentMethod === "cash" ? Math.max(0, Number(amountReceived ?? 0)) : paidTotal;
+
+  if (paymentMethod === "cash" && normalizedAmountReceived < paidTotal) {
+    throw new Error("Valor recebido em dinheiro nao pode ser menor que o total");
+  }
+
+  const changeDue = paymentMethod === "cash" ? normalizedAmountReceived - paidTotal : 0;
+
+  await db
+    .update(orders)
+    .set({
+      status: "delivered",
+      isPaid: true,
+      paidAt: new Date(),
+      serviceFeeApplied,
+      serviceFeeAmount,
+      paidTotal,
+      paymentMethod,
+      amountReceived: normalizedAmountReceived,
+      changeDue,
+      updatedAt: new Date(),
+    })
+    .where(eq(orders.id, id));
+
+  const [updated] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+  return updated;
+}
+
+export async function getCashierReport(dateFrom: Date, dateTo: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const paidOrders = await db
+    .select()
+    .from(orders)
+    .where(
+      and(
+        eq(orders.isPaid, true),
+        gte(orders.paidAt, dateFrom),
+        lte(orders.paidAt, dateTo)
+      )
+    )
+    .orderBy(asc(orders.paidAt));
+
+  const byMethod: Record<PaymentMethod, { count: number; total: number }> = {
+    cash: { count: 0, total: 0 },
+    card: { count: 0, total: 0 },
+    pix: { count: 0, total: 0 },
+  };
+
+  let grossTotal = 0;
+  let serviceFeeTotal = 0;
+
+  paidOrders.forEach((order) => {
+    const method = (order.paymentMethod as PaymentMethod | null) ?? "cash";
+    const paidTotal = Number(order.paidTotal ?? order.total ?? 0);
+    const serviceFee = Number(order.serviceFeeAmount ?? 0);
+
+    byMethod[method].count += 1;
+    byMethod[method].total += paidTotal;
+    grossTotal += paidTotal;
+    serviceFeeTotal += serviceFee;
+  });
+
+  return {
+    dateFrom,
+    dateTo,
+    totals: {
+      count: paidOrders.length,
+      grossTotal,
+      serviceFeeTotal,
+      netWithoutService: grossTotal - serviceFeeTotal,
+    },
+    byMethod,
+    orders: paidOrders,
+  };
+}
+
+export async function closeCashierDay(referenceDate: Date) {
+  const start = new Date(referenceDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(referenceDate);
+  end.setHours(23, 59, 59, 999);
+  return getCashierReport(start, end);
+}
+
+export async function getAppSettings() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return getAutoStatusConfig(db);
+}
+
+export async function updateAppSettings(input: {
+  autoPreparingPercent?: number;
+  autoDeliveredGraceMinutes?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await getAutoStatusConfig(db);
+  const autoPreparingPercent = Math.min(
+    80,
+    Math.max(0, Number(input.autoPreparingPercent ?? existing.autoPreparingPercent))
+  );
+  const autoDeliveredGraceMinutes = Math.min(
+    120,
+    Math.max(0, Number(input.autoDeliveredGraceMinutes ?? existing.autoDeliveredGraceMinutes))
+  );
+
+  await db
+    .update(appSettings)
+    .set({
+      autoPreparingPercent,
+      autoDeliveredGraceMinutes,
+      updatedAt: new Date(),
+    })
+    .where(eq(appSettings.id, Number(existing.id)));
+
+  const [updated] = await db.select().from(appSettings).where(eq(appSettings.id, Number(existing.id))).limit(1);
+  return updated;
 }
 
 export async function updateOrderStatus(id: number, status: InsertOrder["status"]) {
@@ -1017,7 +1336,7 @@ export async function updateOrderStatus(id: number, status: InsertOrder["status"
 export async function updateOrderStatusWithMeta(
   id: number,
   status: InsertOrder["status"],
-  meta: UpdateOrderStatusMeta = {}
+  estimatedReadyMinutes?: number | null
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1027,10 +1346,7 @@ export async function updateOrderStatusWithMeta(
     .set({
       status,
       estimatedReadyMinutes:
-        meta.estimatedReadyMinutes === undefined ? undefined : meta.estimatedReadyMinutes ?? null,
-      paymentMethod: meta.paymentMethod === undefined ? undefined : meta.paymentMethod ?? null,
-      paymentNotes: meta.paymentNotes === undefined ? undefined : meta.paymentNotes ?? null,
-      paidAt: meta.paidAt === undefined ? undefined : meta.paidAt ?? null,
+        estimatedReadyMinutes === undefined ? undefined : estimatedReadyMinutes ?? null,
       updatedAt: new Date(),
     })
     .where(eq(orders.id, id));
@@ -1140,6 +1456,7 @@ export async function updateOrderDetails(id: number, data: UpdateOrderDetailsPay
 export async function getOrderByTrackingCode(trackingCode: string) {
   const db = await getDb();
   if (!db) return undefined;
+  await syncTimedOrderStatuses(db);
 
   const baseOrders = await db
     .select()
@@ -1156,6 +1473,7 @@ export async function getOrderByTrackingCode(trackingCode: string) {
 export async function getLatestOrderByPhone(customerPhone: string) {
   const db = await getDb();
   if (!db) return undefined;
+  await syncTimedOrderStatuses(db);
 
   const normalizedPhone = normalizePhone(customerPhone);
 

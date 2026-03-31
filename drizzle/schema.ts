@@ -14,7 +14,7 @@ import {
  * Extend this file with additional tables as your product grows.
  * Columns use camelCase to match both database fields and generated types.
  */
-export const userRoleEnum = pgEnum("user_role", ["user", "admin", "kitchen", "waiter"]);
+export const userRoleEnum = pgEnum("user_role", ["user", "admin", "kitchen", "waiter", "cashier"]);
 export const orderTypeEnum = pgEnum("order_type", [
   "dine_in",
   "takeaway",
@@ -25,7 +25,6 @@ export const orderStatusEnum = pgEnum("order_status", [
   "new",
   "preparing",
   "ready",
-  "awaiting_payment",
   "delivered",
   "cancelled",
 ]);
@@ -70,6 +69,7 @@ export const products = pgTable("products", {
   description: text("description"),
   price: integer("price").notNull(), // Store in cents to avoid floating point issues
   imageUrl: text("imageUrl"),
+  imageFit: varchar("imageFit", { length: 24 }).default("cover").notNull(),
   imageKey: varchar("imageKey", { length: 255 }), // S3 key for deletion
   ingredients: text("ingredients"), // JSON string of available ingredients
   isActive: boolean("isActive").default(true).notNull(),
@@ -102,13 +102,18 @@ export const orders = pgTable("orders", {
   status: orderStatusEnum("status").default("new").notNull(),
   tableId: integer("tableId").references(() => diningTables.id),
   estimatedReadyMinutes: integer("estimatedReadyMinutes"),
-  paymentMethod: varchar("paymentMethod", { length: 20 }),
-  paymentNotes: text("paymentNotes"),
-  paidAt: timestamp("paidAt", { mode: "date" }),
   notes: text("notes"),
   guestCount: integer("guestCount"),
   reservationAt: timestamp("reservationAt", { mode: "date" }),
   total: integer("total").notNull(),
+  isPaid: boolean("isPaid").default(false).notNull(),
+  paidAt: timestamp("paidAt", { mode: "date" }),
+  serviceFeeApplied: boolean("serviceFeeApplied").default(true).notNull(),
+  serviceFeeAmount: integer("serviceFeeAmount").default(0).notNull(),
+  paidTotal: integer("paidTotal"),
+  paymentMethod: varchar("paymentMethod", { length: 24 }),
+  amountReceived: integer("amountReceived"),
+  changeDue: integer("changeDue"),
   createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
 });
@@ -134,3 +139,13 @@ export const orderItems = pgTable("order_items", {
 
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = typeof orderItems.$inferInsert;
+
+export const appSettings = pgTable("app_settings", {
+  id: serial("id").primaryKey(),
+  autoPreparingPercent: integer("autoPreparingPercent").default(15).notNull(),
+  autoDeliveredGraceMinutes: integer("autoDeliveredGraceMinutes").default(8).notNull(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
+});
+
+export type AppSettings = typeof appSettings.$inferSelect;
+export type InsertAppSettings = typeof appSettings.$inferInsert;

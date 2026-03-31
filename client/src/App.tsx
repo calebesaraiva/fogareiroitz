@@ -12,6 +12,8 @@ import Login from "./pages/Login";
 import AdminPanel from "./pages/AdminPanel";
 import KitchenPanel from "./pages/KitchenPanel";
 import OrderTracking from "./pages/OrderTracking";
+import CashierPanel from "./pages/CashierPanel";
+import ShowcaseBoard from "./pages/ShowcaseBoard";
 
 function Router() {
   return (
@@ -23,6 +25,8 @@ function Router() {
       <Route path="/admin" component={AdminPanel} />
       <Route path="/cozinha" component={KitchenPanel} />
       <Route path="/garcom" component={KitchenPanel} />
+      <Route path="/caixa" component={CashierPanel} />
+      <Route path="/painel-clientes" component={ShowcaseBoard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
