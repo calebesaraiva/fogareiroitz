@@ -83,6 +83,11 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   cancelled: "Cancelado",
 };
 
+const kitchenPrintBrand = {
+  tradeName: "Fogareiro ITZ Restaurante",
+  logoUrl: "/logo-fogareiro.png",
+};
+
 const canAccessKitchenPanel = (role?: string | null) =>
   role === "kitchen" || role === "waiter";
 
@@ -460,6 +465,79 @@ export default function KitchenPanel() {
     return `${diffMinutes} min restantes`;
   };
 
+  const printAcceptedOrderTicket = (order: KitchenOrder, estimateMinutes: number) => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    const line = "-".repeat(32);
+    const nowLabel = new Date().toLocaleString("pt-BR");
+    const row = (label: string, value: string) => {
+      const left = `${label}:`;
+      const max = 32;
+      const valueText = value.slice(0, max);
+      const spaces = Math.max(1, max - left.length - valueText.length);
+      return `${left}${" ".repeat(spaces)}${valueText}`;
+    };
+
+    const itemsHtml =
+      order.items.length === 0
+        ? `<div class="line">Sem itens</div>`
+        : order.items
+            .map((item) => {
+              const custom = item.customization ? ` (${item.customization})` : "";
+              return `<div class="line">${item.quantity}x ${item.productName}${custom}</div>`;
+            })
+            .join("");
+
+    win.document.write(`
+      <html>
+        <head>
+          <title>Comanda #${order.id}</title>
+          <meta charset="utf-8" />
+          <style>
+            @page { size: 80mm auto; margin: 3mm; }
+            body { margin: 0; padding: 0; font-family: "Courier New", monospace; font-size: 12px; color: #000; background: #fff; }
+            .ticket { width: 74mm; margin: 0 auto; padding: 2mm 1mm 3mm; }
+            .logo-wrap { display: flex; justify-content: center; margin-bottom: 3px; }
+            .logo { max-width: 42mm; max-height: 16mm; object-fit: contain; filter: grayscale(100%) contrast(1.1); }
+            .center { text-align: center; }
+            .title { font-size: 14px; font-weight: 700; text-transform: uppercase; }
+            .line { white-space: pre; }
+            .strong { font-weight: 700; }
+            .mt { margin-top: 6px; }
+          </style>
+        </head>
+        <body>
+          <div class="ticket">
+            <div class="logo-wrap">
+              <img class="logo" src="${kitchenPrintBrand.logoUrl}" alt="Logo" onerror="this.style.display='none'" />
+            </div>
+            <div class="center title">${kitchenPrintBrand.tradeName}</div>
+            <div class="center strong">COMANDA DA COZINHA</div>
+            <div class="center">${nowLabel}</div>
+            <div class="line mt">${line}</div>
+            <div class="line">${row("Pedido", `#${order.id}`)}</div>
+            <div class="line">${row("Cliente", order.customerName)}</div>
+            <div class="line">${row("Mesa", order.tableNumber ? `Mesa ${order.tableNumber}` : "-")}</div>
+            <div class="line">${row("Prazo", `${estimateMinutes} min`)}</div>
+            <div class="line">${line}</div>
+            <div class="center strong">ITENS</div>
+            ${itemsHtml}
+            <div class="line">${line}</div>
+            <div class="line">${row("Total", formatPrice(order.total))}</div>
+          </div>
+          <script>
+            window.onload = () => {
+              window.print();
+              window.onafterprint = () => window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    win.document.close();
+  };
+
   const handleStatusChange = async (
     orderId: number,
     status: OrderStatus,
@@ -477,15 +555,20 @@ export default function KitchenPanel() {
       );
       await ordersQuery.refetch();
       toast.success(`Pedido atualizado para "${STATUS_LABEL[status]}"`);
+      return true;
     } catch (error) {
       console.error(error);
       toast.error("Nao foi possivel atualizar o status do pedido");
+      return false;
     }
   };
 
-  const handleAcceptOrder = async (orderId: number) => {
-    const estimate = Math.max(1, Number(estimateByOrderId[orderId] || "20") || 20);
-    await handleStatusChange(orderId, "new", estimate);
+  const handleAcceptOrder = async (order: KitchenOrder) => {
+    const estimate = Math.max(1, Number(estimateByOrderId[order.id] || "20") || 20);
+    const ok = await handleStatusChange(order.id, "new", estimate);
+    if (ok) {
+      printAcceptedOrderTicket(order, estimate);
+    }
   };
 
   const addDraftItem = () => {
@@ -928,7 +1011,7 @@ export default function KitchenPanel() {
               <Button
                 type="button"
                 className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                onClick={() => handleAcceptOrder(order.id)}
+                onClick={() => handleAcceptOrder(order)}
                 disabled={updateStatusMutation.isPending}
               >
                 <ShieldCheck className="h-4 w-4" />

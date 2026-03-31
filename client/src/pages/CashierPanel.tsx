@@ -14,8 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useGlobalLoading } from "@/contexts/GlobalLoadingContext";
 import { trpc } from "@/lib/trpc";
-import { LogOut, Printer, RefreshCcw, WalletCards } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, CheckCircle2, LogOut, Printer, RefreshCcw, WalletCards } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -76,6 +76,7 @@ export default function CashierPanel() {
     refetchInterval: 5000,
   });
   const markPaidMutation = trpc.orders.markPaid.useMutation();
+  const updateStatusMutation = trpc.orders.updateStatus.useMutation();
   const closeDayMutation = trpc.orders.closeDay.useMutation();
 
   const now = new Date();
@@ -90,6 +91,8 @@ export default function CashierPanel() {
   const [receiveDiscount, setReceiveDiscount] = useState("");
   const [receiveDiscountAdminEmail, setReceiveDiscountAdminEmail] = useState("");
   const [receiveDiscountAdminPassword, setReceiveDiscountAdminPassword] = useState("");
+  const [estimateByOrderId, setEstimateByOrderId] = useState<Record<number, string>>({});
+  const previousPendingIdsRef = useRef<number[]>([]);
   const [dateFrom, setDateFrom] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`);
   const [dateTo, setDateTo] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`);
 
@@ -134,6 +137,23 @@ export default function CashierPanel() {
       return byName || byPhone || byTable;
     });
   }, [orders, search]);
+
+  const pendingOrders = useMemo(
+    () => orders.filter((order) => order.status === "pending"),
+    [orders]
+  );
+
+  useEffect(() => {
+    const pendingIds = pendingOrders.map((order) => order.id);
+    const previousIds = previousPendingIdsRef.current;
+    const hasNewPending = pendingIds.some((id) => !previousIds.includes(id));
+
+    if (previousIds.length > 0 && hasNewPending) {
+      toast.warning("Novo pedido aguardando aceite no caixa");
+    }
+
+    previousPendingIdsRef.current = pendingIds;
+  }, [pendingOrders]);
 
   const calcPayment = (
     order: CashierOrder,
@@ -409,6 +429,26 @@ export default function CashierPanel() {
     }
   };
 
+  const handleAcceptInCashier = async (order: CashierOrder) => {
+    const estimate = Math.max(1, Number(estimateByOrderId[order.id] || "20") || 20);
+    try {
+      await withLoading(
+        () =>
+          updateStatusMutation.mutateAsync({
+            id: order.id,
+            status: "new",
+            estimatedReadyMinutes: estimate,
+          }),
+        { message: `Aceitando pedido #${order.id}` }
+      );
+      await Promise.all([ordersQuery.refetch(), reportQuery.refetch()]);
+      toast.success(`Pedido #${order.id} aceito no caixa`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Nao foi possivel aceitar esse pedido");
+    }
+  };
+
   return (
     <div className="mothers-day-shell min-h-screen">
       <RestaurantHeader showCart={false} title="Caixa" subtitle="Recebimentos e fechamento diario" />
@@ -443,6 +483,54 @@ export default function CashierPanel() {
             <CardTitle className="flex items-center gap-2"><WalletCards className="h-5 w-5 text-accent" /> Contas abertas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {pendingOrders.length > 0 ? (
+              <div className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-3">
+                <div className="mb-2 flex items-center gap-2 text-amber-200">
+                  <AlertTriangle className="h-4 w-4" />
+                  <p className="text-sm font-semibold">
+                    {pendingOrders.length} pedido(s) aguardando aceite no caixa
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {pendingOrders.map((order) => (
+                    <div
+                      key={`pending-cashier-${order.id}`}
+                      className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/20 bg-black/10 p-2"
+                    >
+                      <div className="min-w-[180px] flex-1 text-sm">
+                        <strong>Pedido #{order.id}</strong> - {order.customerName}
+                        {order.tableNumber ? ` (Mesa ${order.tableNumber})` : ""}
+                      </div>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="240"
+                        value={estimateByOrderId[order.id] ?? "20"}
+                        onChange={(e) =>
+                          setEstimateByOrderId((current) => ({
+                            ...current,
+                            [order.id]: e.target.value,
+                          }))
+                        }
+                        className="h-9 w-24"
+                      />
+                      <span className="text-xs text-muted-foreground">min</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-accent text-accent-foreground hover:bg-accent/90"
+                        onClick={() => handleAcceptInCashier(order)}
+                        disabled={updateStatusMutation.isPending}
+                      >
+                        <CheckCircle2 className="mr-1 h-4 w-4" />
+                        Aceitar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
