@@ -28,6 +28,11 @@ type CashierOrder = {
   status: "pending" | "new" | "preparing" | "ready" | "delivered" | "cancelled" | "awaiting_payment" | "paid";
   serviceFeeDefault: number;
   createdAt: Date;
+  items?: Array<{
+    productName: string;
+    quantity: number;
+    totalPrice: number;
+  }>;
 };
 
 type PaymentMethod = "cash" | "card" | "pix";
@@ -168,6 +173,21 @@ export default function CashierPanel() {
       const spaces = Math.max(1, max - left.length - valueText.length);
       return `${left}${" ".repeat(spaces)}${valueText}`;
     };
+    const orderItems = Array.isArray(order.items) ? order.items : [];
+    const itemsHtml =
+      orderItems.length === 0
+        ? `<div class="line">Itens: nao informado</div>`
+        : orderItems
+            .map((item) => {
+              const qty = Number(item.quantity || 0);
+              const lineTotal = Number(item.totalPrice || 0);
+              const name = String(item.productName || "Item");
+              return `
+                <div class="line">${qty}x ${name}</div>
+                <div class="line">${row(" ", formatPrice(lineTotal))}</div>
+              `;
+            })
+            .join("");
     win.document.write(`
       <html>
         <head>
@@ -201,6 +221,7 @@ export default function CashierPanel() {
               max-width: 42mm;
               max-height: 18mm;
               object-fit: contain;
+              filter: grayscale(100%) contrast(1.1);
             }
             .center {
               text-align: center;
@@ -246,6 +267,10 @@ export default function CashierPanel() {
             <div class="line">${row("Cliente", order.customerName)}</div>
             <div class="line">${row("Telefone", formatPhone(order.customerPhone))}</div>
             <div class="line">${row("Mesa", order.tableNumber ? `Mesa ${order.tableNumber}` : "-")}</div>
+            <div class="line">${line}</div>
+            <div class="center strong">ITENS DO PEDIDO</div>
+            ${itemsHtml}
+            <div class="line">${line}</div>
             <div class="line">${row("Forma", methodLabel[method])}</div>
             <div class="line">${row("Subtotal", formatPrice(order.total))}</div>
             <div class="line">${row("Taxa de servico", formatPrice(serviceFeeValue))}</div>
@@ -261,6 +286,7 @@ export default function CashierPanel() {
           <script>
             window.onload = () => {
               window.print();
+              window.onafterprint = () => window.close();
             };
           </script>
         </body>
