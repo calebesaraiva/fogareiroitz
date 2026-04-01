@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
 import { useGlobalLoading } from "@/contexts/GlobalLoadingContext";
-import { getStoredDiningTableAccess } from "@/lib/dineInAccess";
+import { clearDiningTableAccess, getStoredDiningTableAccess } from "@/lib/dineInAccess";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, ClipboardCheck, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -27,7 +27,18 @@ export default function Cart() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
   const normalizedPhone = useMemo(() => customerPhone.replace(/\D/g, ""), [customerPhone]);
-  const resolvedTable = tableAccessQuery.data ?? tableAccess;
+  const isTableAccessInvalid = (tableAccessQuery.error?.message || "")
+    .toLowerCase()
+    .includes("mesa nao autorizada");
+  const resolvedTable = isTableAccessInvalid ? null : tableAccessQuery.data ?? tableAccess;
+
+  useEffect(() => {
+    if (!isTableAccessInvalid) return;
+    clearDiningTableAccess();
+    toast.error("QR Code da mesa invalido ou expirado", {
+      description: "Escaneie novamente o QR Code da mesa para liberar o pedido.",
+    });
+  }, [isTableAccessInvalid]);
 
   const formatPrice = (price: number) =>
     (price / 100).toLocaleString("pt-BR", {

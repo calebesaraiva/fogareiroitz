@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useGlobalLoading } from "@/contexts/GlobalLoadingContext";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, CheckCircle2, LogOut, Printer, RefreshCcw, WalletCards } from "lucide-react";
+import { AlertTriangle, CheckCircle2, LogOut, Printer, RefreshCcw, WalletCards, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -449,6 +449,29 @@ export default function CashierPanel() {
     }
   };
 
+  const handleRejectInCashier = async (order: CashierOrder) => {
+    const confirmed = window.confirm(
+      `Deseja recusar/cancelar o pedido #${order.id} de ${order.customerName}?`
+    );
+    if (!confirmed) return;
+
+    try {
+      await withLoading(
+        () =>
+          updateStatusMutation.mutateAsync({
+            id: order.id,
+            status: "cancelled",
+          }),
+        { message: `Recusando pedido #${order.id}` }
+      );
+      await Promise.all([ordersQuery.refetch(), reportQuery.refetch()]);
+      toast.success(`Pedido #${order.id} recusado`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Nao foi possivel recusar esse pedido");
+    }
+  };
+
   return (
     <div className="mothers-day-shell min-h-screen">
       <RestaurantHeader showCart={false} title="Caixa" subtitle="Recebimentos e fechamento diario" />
@@ -524,6 +547,16 @@ export default function CashierPanel() {
                       >
                         <CheckCircle2 className="mr-1 h-4 w-4" />
                         Aceitar
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleRejectInCashier(order)}
+                        disabled={updateStatusMutation.isPending}
+                      >
+                        <XCircle className="mr-1 h-4 w-4" />
+                        Recusar
                       </Button>
                     </div>
                   ))}
