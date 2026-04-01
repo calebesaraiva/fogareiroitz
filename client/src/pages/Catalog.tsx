@@ -10,6 +10,7 @@ import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 
 type CatalogProduct = {
   id: number;
@@ -63,9 +64,12 @@ export default function Catalog() {
   }, [tableAccessQuery.data]);
 
   useEffect(() => {
-    if (mesaToken && tableAccessQuery.error) {
+    if (!mesaToken || !tableAccessQuery.error) return;
+    const message = tableAccessQuery.error.message || "";
+    if (message.toLowerCase().includes("mesa nao autorizada")) {
       clearDiningTableAccess();
       setTableAccess(null);
+      toast.error("QR Code da mesa invalido ou expirado");
     }
   }, [mesaToken, tableAccessQuery.error]);
 
@@ -118,7 +122,6 @@ export default function Catalog() {
 
   const handleAddToCart = async () => {
     if (!selectedProduct) return;
-    if (!hasPresentialAccess) return;
 
     await pulseLoading("Adicionando ao seu pedido", 850);
     addToCart({
@@ -334,13 +337,8 @@ export default function Catalog() {
                   {categoryProducts.map((product) => (
                     <Card
                       key={product.id}
-                      className={`group overflow-hidden border-border/70 bg-card/92 transition-all duration-300 ${
-                        hasPresentialAccess
-                          ? "cursor-pointer hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(0,0,0,0.18)]"
-                          : "cursor-default"
-                      }`}
+                      className="group cursor-pointer overflow-hidden border-border/70 bg-card/92 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(0,0,0,0.18)]"
                       onClick={async () => {
-                        if (!hasPresentialAccess) return;
                         await pulseLoading("Abrindo detalhes do prato", 900);
                         setSelectedProduct(product);
                       }}
@@ -373,16 +371,14 @@ export default function Catalog() {
                           </span>
                           <Button
                             size="sm"
-                            disabled={!hasPresentialAccess}
                             className="rounded-full bg-accent px-4 text-accent-foreground hover:bg-accent/90"
                             onClick={async (e) => {
                               e.stopPropagation();
-                              if (!hasPresentialAccess) return;
                               await pulseLoading("Abrindo detalhes do prato", 900);
                               setSelectedProduct(product);
                             }}
                           >
-                            {hasPresentialAccess ? "Adicionar" : "Somente no local"}
+                            Adicionar
                           </Button>
                         </div>
                       </CardContent>
@@ -494,10 +490,9 @@ export default function Catalog() {
 
                 <Button
                   onClick={handleAddToCart}
-                  disabled={!hasPresentialAccess}
                   className="h-12 w-full bg-accent text-base font-semibold text-accent-foreground hover:bg-accent/90 lg:h-14"
                 >
-                  {hasPresentialAccess ? "Adicionar ao Carrinho" : "Pedido liberado so na mesa"}
+                  Adicionar ao Carrinho
                 </Button>
               </div>
             </div>

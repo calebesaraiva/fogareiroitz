@@ -220,7 +220,6 @@ export default function AdminPanel() {
   const createStaffMutation = trpc.staff.create.useMutation();
   const updateStaffMutation = trpc.staff.update.useMutation();
   const createTableMutation = trpc.tables.create.useMutation();
-  const markPaidMutation = trpc.orders.markPaid.useMutation();
   const updateSettingsMutation = trpc.settings.update.useMutation();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -234,7 +233,6 @@ export default function AdminPanel() {
   const [tableForm, setTableForm] = useState<TableForm>(EMPTY_TABLE_FORM);
   const [staffPasswordDrafts, setStaffPasswordDrafts] = useState<Record<number, string>>({});
   const [cashierSearch, setCashierSearch] = useState("");
-  const [removeFeeByOrderId, setRemoveFeeByOrderId] = useState<Record<number, boolean>>({});
   const [autoPreparingPercent, setAutoPreparingPercent] = useState("15");
   const [autoDeliveredGraceMinutes, setAutoDeliveredGraceMinutes] = useState("8");
   const [showcaseTitle, setShowcaseTitle] = useState("Fogareiro ITZ Restaurante");
@@ -752,38 +750,6 @@ export default function AdminPanel() {
     }
   };
 
-  const handleMarkOrderPaid = async (order: CashierOrder) => {
-    try {
-      const removeServiceFee = Boolean(removeFeeByOrderId[order.id]);
-      const serviceFeeAmount = removeServiceFee
-        ? 0
-        : Math.round(Number(order.total) * (Number(order.serviceFeeDefault || 10) / 100));
-      const paidTotal = Number(order.total) + serviceFeeAmount;
-      await withLoading(
-        () =>
-          markPaidMutation.mutateAsync({
-            id: Number(order.id),
-            paymentMethod: "cash",
-            amountReceived: paidTotal,
-            removeServiceFee,
-          }),
-        { message: `Registrando pagamento da comanda #${order.id}` }
-      );
-
-      setRemoveFeeByOrderId((current) => {
-        const next = { ...current };
-        delete next[order.id];
-        return next;
-      });
-
-      await Promise.all([cashierQuery.refetch(), ordersQuery.refetch()]);
-      toast.success(`Pagamento da comanda #${order.id} confirmado no caixa`);
-    } catch (error) {
-      console.error(error);
-      toast.error("Nao foi possivel registrar esse pagamento");
-    }
-  };
-
   const handleSaveAutoSettings = async () => {
     const preparingPercent = Math.max(0, Math.min(80, Number(autoPreparingPercent) || 15));
     const graceMinutes = Math.max(0, Math.min(120, Number(autoDeliveredGraceMinutes) || 8));
@@ -996,7 +962,15 @@ export default function AdminPanel() {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              onClick={() => Promise.all([ordersQuery.refetch(), cashierQuery.refetch()])}
+              onClick={() =>
+                Promise.all([
+                  ordersQuery.refetch(),
+                  cashierQuery.refetch(),
+                  tablesQuery.refetch(),
+                  staffQuery.refetch(),
+                  settingsQuery.refetch(),
+                ])
+              }
               className="gap-2"
             >
               <RefreshCcw className="h-4 w-4" />
@@ -1525,6 +1499,9 @@ export default function AdminPanel() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-3 text-sm text-amber-100">
+                Somente o perfil de caixa pode receber pagamentos. Este quadro no admin e apenas para acompanhamento.
+              </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
                 <Input
                   value={cashierSearch}
@@ -1544,8 +1521,7 @@ export default function AdminPanel() {
                 <div className="fogareiro-scrollbar max-h-[28rem] space-y-3 overflow-y-auto pr-2">
                   {filteredCashierOrders.map((order) => {
                     const subtotal = Number(order.total);
-                    const removeServiceFee = Boolean(removeFeeByOrderId[order.id]);
-                    const serviceFeeAmount = removeServiceFee ? 0 : Math.round(subtotal * 0.1);
+                    const serviceFeeAmount = Math.round(subtotal * 0.1);
                     const finalTotal = subtotal + serviceFeeAmount;
 
                     return (
@@ -1582,28 +1558,8 @@ export default function AdminPanel() {
                           </div>
                         </div>
 
-                        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                            <input
-                              type="checkbox"
-                              checked={removeServiceFee}
-                              onChange={(event) =>
-                                setRemoveFeeByOrderId((current) => ({
-                                  ...current,
-                                  [order.id]: event.target.checked,
-                                }))
-                              }
-                            />
-                            Remover 10% do garcom nesta conta
-                          </label>
-
-                          <Button
-                            onClick={() => handleMarkOrderPaid(order)}
-                            disabled={markPaidMutation.isPending}
-                            className="bg-accent text-accent-foreground hover:bg-accent/90"
-                          >
-                            Receber no caixa
-                          </Button>
+                        <div className="mt-3 rounded-xl border border-border/60 bg-card/50 px-3 py-2 text-sm text-muted-foreground">
+                          Recebimento bloqueado no admin. Use o painel <strong className="text-foreground">/caixa</strong> com usuario de caixa.
                         </div>
                       </div>
                     );
@@ -2251,7 +2207,7 @@ export default function AdminPanel() {
                       <p className="font-semibold text-foreground">Pedido #{order.id}</p>
                       <p className="text-sm text-muted-foreground">{order.customerName}</p>
                     </div>
-                    <Badge>{order.status === "pending" ? "aguardando" : order.status}</Badge>
+                    <Badge>{ORDER_STATUS_LABEL[order.status] ?? order.status}</Badge>
                   </div>
                   <div className="mt-3 flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                     <span>{ORDER_TYPE_LABEL}</span>

@@ -105,12 +105,12 @@ export default function CashierPanel() {
   );
 
   useEffect(() => {
-    if (!loading && (!isAuthenticated || (user?.role !== "cashier" && user?.role !== "admin"))) {
+    if (!loading && (!isAuthenticated || user?.role !== "cashier")) {
       setLocation("/login");
     }
   }, [loading, isAuthenticated, user, setLocation]);
 
-  if (!loading && (!isAuthenticated || (user?.role !== "cashier" && user?.role !== "admin"))) {
+  if (!loading && (!isAuthenticated || user?.role !== "cashier")) {
     return null;
   }
 
@@ -497,7 +497,7 @@ export default function CashierPanel() {
                       key={`pending-cashier-${order.id}`}
                       className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/20 bg-black/10 p-2"
                     >
-                      <div className="min-w-[180px] flex-1 text-sm">
+                      <div className="min-w-0 flex-1 text-sm">
                         <strong>Pedido #{order.id}</strong> - {order.customerName}
                         {order.tableNumber ? ` (Mesa ${order.tableNumber})` : ""}
                       </div>

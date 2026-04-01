@@ -117,7 +117,7 @@ export default function ShowcaseBoard() {
     : showcaseSettingsQuery.data?.showcaseSubtitle || "Cardapio da casa";
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#3b1820_0%,#1a0c12_58%,#10070b_100%)] text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,#3b1820_0%,#1a0c12_58%,#10070b_100%)] text-white">
       <style>{`
         @keyframes fadeIn {
           from { opacity: .3; transform: scale(1.03); }
@@ -134,27 +134,27 @@ export default function ShowcaseBoard() {
       `}</style>
 
       <header className="border-b border-white/10 bg-black/25 backdrop-blur">
-        <div className="mx-auto flex max-w-[1680px] items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-4">
+        <div className="mx-auto flex max-w-[1680px] flex-col items-start justify-between gap-3 px-3 py-4 sm:flex-row sm:items-center sm:gap-0 sm:px-6 sm:py-5">
+          <div className="flex items-center gap-3 sm:gap-4">
             <img
               src={restaurantLogo}
               alt={headerTitle}
-              className="h-16 w-16 rounded-full border border-white/20 bg-black/30 p-2 object-contain"
+              className="h-12 w-12 rounded-full border border-white/20 bg-black/30 p-1.5 object-contain sm:h-16 sm:w-16 sm:p-2"
             />
             <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-amber-300/90">{headerSubtitle}</p>
-              <h1 className="text-3xl font-bold">{headerTitle}</h1>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-amber-300/90 sm:text-xs sm:tracking-[0.35em]">{headerSubtitle}</p>
+              <h1 className="text-2xl font-bold sm:text-3xl">{headerTitle}</h1>
             </div>
           </div>
-          <div className="rounded-full border border-emerald-300/35 bg-emerald-300/10 px-4 py-2 text-sm">
+          <div className="rounded-full border border-emerald-300/35 bg-emerald-300/10 px-4 py-2 text-xs sm:text-sm">
             Painel ao vivo
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1680px] px-6 py-6 pb-24">
+      <main className="mx-auto max-w-[1680px] px-3 py-4 pb-24 sm:px-6 sm:py-6">
         {active ? (
-          <section className="relative mb-5 h-[58vh] min-h-[380px] overflow-hidden rounded-3xl border border-white/10 bg-black/40 shadow-[0_30px_90px_rgba(0,0,0,0.35)]">
+          <section className="relative mb-5 h-[54vh] min-h-[320px] overflow-hidden rounded-3xl border border-white/10 bg-black/40 shadow-[0_30px_90px_rgba(0,0,0,0.35)] sm:h-[58vh] sm:min-h-[380px]">
             <img
               key={`bg-${active.id}`}
               src={active.imageUrl || FALLBACK_IMAGE}
@@ -167,22 +167,22 @@ export default function ShowcaseBoard() {
               key={`main-${active.id}`}
               src={active.imageUrl || FALLBACK_IMAGE}
               alt={active.name}
-              className="absolute right-4 top-4 h-[calc(100%-2rem)] w-[58%] object-contain animate-[fadeIn_550ms_ease-out,zoomSlow_5500ms_linear]"
+              className="absolute right-2 top-2 h-[44%] w-[calc(100%-1rem)] object-contain animate-[fadeIn_550ms_ease-out,zoomSlow_5500ms_linear] sm:right-4 sm:top-4 sm:h-[calc(100%-2rem)] sm:w-[58%]"
             />
 
-            <div className="absolute bottom-0 left-0 z-10 max-w-[44%] p-8">
-              <p className="mb-3 text-xs uppercase tracking-[0.35em] text-amber-300">Destaque da casa</p>
-              <h2 className="text-4xl font-black leading-tight md:text-6xl">{active.name}</h2>
+            <div className="absolute bottom-0 left-0 z-10 max-w-full p-4 sm:max-w-[44%] sm:p-8">
+              <p className="mb-2 text-[10px] uppercase tracking-[0.22em] text-amber-300 sm:mb-3 sm:text-xs sm:tracking-[0.35em]">Destaque da casa</p>
+              <h2 className="text-3xl font-black leading-tight sm:text-4xl md:text-6xl">{active.name}</h2>
             </div>
 
-            <div className="absolute bottom-6 right-8 flex items-center gap-2">
+            <div className="absolute bottom-4 right-4 flex items-center gap-1.5 sm:bottom-6 sm:right-8 sm:gap-2">
               {slides.slice(0, 10).map((slide, idx) => (
                 <button
                   key={slide.id}
                   type="button"
                   onClick={() => setSlideIndex(idx)}
                   className={`h-2.5 rounded-full transition-all duration-300 ${
-                    idx === slideIndex ? "w-10 bg-amber-300" : "w-2.5 bg-white/45 hover:bg-white/70"
+                    idx === slideIndex ? "w-8 bg-amber-300 sm:w-10" : "w-2.5 bg-white/45 hover:bg-white/70"
                   }`}
                   aria-label={`Slide ${idx + 1}`}
                 />
@@ -195,19 +195,19 @@ export default function ShowcaseBoard() {
           </section>
         )}
 
-        <section className="overflow-hidden rounded-2xl border border-white/10 bg-black/25 p-3">
-          <div className="flex min-w-max gap-3 animate-[marqueeLeft_42s_linear_infinite]">
+        <section className="overflow-hidden rounded-2xl border border-white/10 bg-black/25 p-2 sm:p-3">
+          <div className="flex min-w-max gap-2 sm:gap-3 animate-[marqueeLeft_42s_linear_infinite]">
             {thumbProducts.map((product, idx) => (
               <button
                 key={`${product.id}-${idx}`}
                 type="button"
                 onClick={() => setSlideIndex(idx % slides.length)}
-                className="w-48 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] text-left"
+                className="w-36 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] text-left sm:w-48"
               >
-                <div className="h-28 w-full bg-black/35 p-2">
+                <div className="h-24 w-full bg-black/35 p-1.5 sm:h-28 sm:p-2">
                   <img src={product.imageUrl || FALLBACK_IMAGE} alt={product.name} className="h-full w-full object-contain" />
                 </div>
-                <div className="line-clamp-2 px-3 py-2 text-sm font-semibold">{product.name}</div>
+                <div className="line-clamp-2 px-2.5 py-2 text-xs font-semibold sm:px-3 sm:text-sm">{product.name}</div>
               </button>
             ))}
           </div>
@@ -215,9 +215,9 @@ export default function ShowcaseBoard() {
       </main>
 
       <footer className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-black/55 backdrop-blur">
-        <div className="mx-auto max-w-[1680px] overflow-hidden px-6 py-3">
+        <div className="mx-auto max-w-[1680px] overflow-hidden px-3 py-2 sm:px-6 sm:py-3">
           {orders.length === 0 ? (
-            <div className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80">
+            <div className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/80 sm:px-4 sm:py-2 sm:text-sm">
               Nenhum pedido recente agora.
             </div>
           ) : (
@@ -225,7 +225,7 @@ export default function ShowcaseBoard() {
               {tickerOrders.map((order, idx) => (
                 <div
                   key={`${order.id}-${idx}`}
-                  className="shrink-0 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-sm"
+                  className="shrink-0 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm"
                 >
                   Pedido #{order.id} - {order.customerName}
                   {order.tableNumber ? ` - Mesa ${order.tableNumber}` : ""} - {STATUS_LABEL[order.status]}

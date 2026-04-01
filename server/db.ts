@@ -1146,7 +1146,7 @@ export async function createDiningTable(data: DiningTablePayload) {
 
   if (existingTable) {
     if (existingTable.isActive) {
-      throw new Error(`Mesa ${normalizedNumber} ja cadastrada`);
+      return existingTable;
     }
 
     const [reactivatedTable] = await db
@@ -1180,6 +1180,39 @@ export async function createDiningTable(data: DiningTablePayload) {
       return createdTable;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+
+      if (
+        message.includes("dining_tables_number") ||
+        message.includes("dining_tables_number_key") ||
+        message.toLowerCase().includes("duplicate key value violates unique constraint")
+      ) {
+        const [tableByNumber] = await db
+          .select()
+          .from(diningTables)
+          .where(eq(diningTables.number, normalizedNumber))
+          .limit(1);
+
+        if (!tableByNumber) {
+          throw error;
+        }
+
+        if (tableByNumber.isActive) {
+          return tableByNumber;
+        }
+
+        const [reactivatedTable] = await db
+          .update(diningTables)
+          .set({
+            label: normalizedLabel,
+            isActive: true,
+            updatedAt: new Date(),
+          })
+          .where(eq(diningTables.id, Number(tableByNumber.id)))
+          .returning();
+
+        if (reactivatedTable) return reactivatedTable;
+        return tableByNumber;
+      }
 
       if (message.includes("dining_tables_publicToken") || message.includes("publicToken")) {
         continue;
