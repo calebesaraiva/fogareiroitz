@@ -2,7 +2,8 @@ export type DiningTableAccess = {
   id: number;
   number: number;
   label: string | null;
-  publicToken: string;
+  accessToken: string;
+  expiresAt: number;
 };
 
 const DINE_IN_ACCESS_KEY = "fogareiro:dineInAccess";
@@ -11,7 +12,29 @@ export function getStoredDiningTableAccess(): DiningTableAccess | null {
   try {
     const raw = localStorage.getItem(DINE_IN_ACCESS_KEY) ?? sessionStorage.getItem(DINE_IN_ACCESS_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as DiningTableAccess;
+    const parsed = JSON.parse(raw) as Partial<DiningTableAccess>;
+    if (
+      typeof parsed?.id !== "number" ||
+      typeof parsed?.number !== "number" ||
+      typeof parsed?.accessToken !== "string" ||
+      typeof parsed?.expiresAt !== "number"
+    ) {
+      clearDiningTableAccess();
+      return null;
+    }
+
+    if (parsed.expiresAt <= Date.now()) {
+      clearDiningTableAccess();
+      return null;
+    }
+
+    return {
+      id: parsed.id,
+      number: parsed.number,
+      label: parsed.label ?? null,
+      accessToken: parsed.accessToken,
+      expiresAt: parsed.expiresAt,
+    };
   } catch {
     return null;
   }

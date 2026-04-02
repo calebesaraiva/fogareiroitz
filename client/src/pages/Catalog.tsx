@@ -69,7 +69,9 @@ export default function Catalog() {
     if (message.toLowerCase().includes("mesa nao autorizada")) {
       clearDiningTableAccess();
       setTableAccess(null);
-      toast.error("QR Code da mesa invalido ou expirado");
+      toast.error("Mesa indisponivel para novo pedido", {
+        description: "Esse QR esta invalido, expirou ou a mesa ja esta em uso no momento.",
+      });
     }
   }, [mesaToken, tableAccessQuery.error]);
 

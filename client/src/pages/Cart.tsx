@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
 import { useGlobalLoading } from "@/contexts/GlobalLoadingContext";
-import { clearDiningTableAccess, getStoredDiningTableAccess } from "@/lib/dineInAccess";
+import { clearDiningTableAccess, getStoredDiningTableAccess, saveDiningTableAccess } from "@/lib/dineInAccess";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, ClipboardCheck, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -17,9 +17,9 @@ export default function Cart() {
   const { pulseLoading, withLoading } = useGlobalLoading();
   const [, setLocation] = useLocation();
   const tableAccess = getStoredDiningTableAccess();
-  const tableAccessQuery = trpc.tables.resolvePublicAccess.useQuery(
-    { token: tableAccess?.publicToken || "" },
-    { enabled: !!tableAccess?.publicToken, retry: false }
+  const tableAccessQuery = trpc.tables.resolveAccessSession.useQuery(
+    { accessToken: tableAccess?.accessToken || "" },
+    { enabled: !!tableAccess?.accessToken, retry: false }
   );
   const createOrderMutation = trpc.orders.create.useMutation();
 
@@ -35,10 +35,15 @@ export default function Cart() {
   useEffect(() => {
     if (!isTableAccessInvalid) return;
     clearDiningTableAccess();
-    toast.error("QR Code da mesa invalido ou expirado", {
-      description: "Escaneie novamente o QR Code da mesa para liberar o pedido.",
+    toast.error("Mesa indisponivel para novo pedido", {
+      description: "Esse acesso expirou, ficou invalido ou a mesa ja esta em uso no momento.",
     });
   }, [isTableAccessInvalid]);
+
+  useEffect(() => {
+    if (!tableAccessQuery.data) return;
+    saveDiningTableAccess(tableAccessQuery.data);
+  }, [tableAccessQuery.data]);
 
   const formatPrice = (price: number) =>
     (price / 100).toLocaleString("pt-BR", {
@@ -68,7 +73,7 @@ export default function Cart() {
       return false;
     }
 
-    if (!resolvedTable?.id || !resolvedTable?.publicToken) {
+    if (!resolvedTable?.id || !resolvedTable?.accessToken) {
       toast.error("Pedido presencial nao autorizado", {
         description: "Escaneie o QR da mesa dentro do restaurante para liberar o pedido.",
       });
@@ -96,7 +101,7 @@ export default function Cart() {
             customerPhone: normalizedPhone,
             orderType: "dine_in",
             tableId: Number(resolvedTable?.id),
-            tableToken: resolvedTable?.publicToken || "",
+            tableToken: resolvedTable?.accessToken || "",
             notes: notes.trim() || undefined,
             total,
             items: items.map((item) => ({

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
@@ -53,6 +54,83 @@ const phoneSchema = z
   });
 
 const staffRoleSchema = z.enum(["admin", "kitchen", "waiter", "cashier"]);
+const TABLE_ACCESS_SESSION_TTL_MS = 1000 * 60 * 60 * 6;
+const TABLE_ACCESS_SESSION_VERSION = "v1";
+
+function getTableAccessSecret() {
+  return process.env.TABLE_ACCESS_SECRET || process.env.SESSION_SECRET || "fogareiro-table-access";
+}
+
+function signTableAccessPayload(payload: string) {
+  return createHmac("sha256", getTableAccessSecret()).update(payload).digest("base64url");
+}
+
+function createTableAccessSession(table: {
+  id: number;
+  number: number;
+  label: string | null;
+  publicToken: string;
+}) {
+  const expiresAt = Date.now() + TABLE_ACCESS_SESSION_TTL_MS;
+  const payload = [
+    TABLE_ACCESS_SESSION_VERSION,
+    String(table.id),
+    table.publicToken,
+    String(expiresAt),
+  ].join(".");
+
+  return {
+    id: table.id,
+    number: table.number,
+    label: table.label,
+    accessToken: `${payload}.${signTableAccessPayload(payload)}`,
+    expiresAt,
+  };
+}
+
+async function resolveAuthorizedTableAccess(
+  accessToken: string,
+  options?: { requireAvailable?: boolean }
+) {
+  const normalized = accessToken.trim();
+  const parts = normalized.split(".");
+
+  if (parts.length !== 5) {
+    return null;
+  }
+
+  const [version, rawTableId, publicToken, rawExpiresAt, providedSignature] = parts;
+  if (version !== TABLE_ACCESS_SESSION_VERSION) {
+    return null;
+  }
+
+  const expiresAt = Number(rawExpiresAt);
+  const tableId = Number(rawTableId);
+  if (!Number.isFinite(expiresAt) || !Number.isInteger(tableId) || expiresAt <= Date.now()) {
+    return null;
+  }
+
+  const payload = [version, rawTableId, publicToken, rawExpiresAt].join(".");
+  const expectedSignature = signTableAccessPayload(payload);
+  const providedBuffer = Buffer.from(providedSignature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+
+  if (
+    providedBuffer.length !== expectedBuffer.length ||
+    !timingSafeEqual(providedBuffer, expectedBuffer)
+  ) {
+    return null;
+  }
+
+  const table = await getDiningTableByPublicToken(publicToken, {
+    requireAvailable: options?.requireAvailable,
+  });
+  if (!table || Number(table.id) !== tableId) {
+    return null;
+  }
+
+  return table;
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -182,7 +260,8 @@ export const appRouter = router({
   }),
 
   tables: router({
-    list: publicProcedure.query(async () => {
+    list: protectedProcedure.query(async ({ ctx }) => {
+      if (!canOperateOrders(ctx.user?.role)) throw new Error("Unauthorized");
       return getActiveDiningTables();
     }),
 
@@ -193,17 +272,37 @@ export const appRouter = router({
         })
       )
       .query(async ({ input }) => {
-        const table = await getDiningTableByPublicToken(input.token);
+        const table = await getDiningTableByPublicToken(input.token, { requireAvailable: true });
         if (!table) {
           throw new Error("Mesa nao autorizada para pedido presencial");
         }
 
-        return {
-          id: table.id,
+        return createTableAccessSession({
+          id: Number(table.id),
           number: table.number,
           label: table.label,
           publicToken: table.publicToken,
-        };
+        });
+      }),
+
+    resolveAccessSession: publicProcedure
+      .input(
+        z.object({
+          accessToken: z.string().min(24),
+        })
+      )
+      .query(async ({ input }) => {
+        const table = await resolveAuthorizedTableAccess(input.accessToken, { requireAvailable: true });
+        if (!table) {
+          throw new Error("Mesa nao autorizada para pedido presencial");
+        }
+
+        return createTableAccessSession({
+          id: Number(table.id),
+          number: table.number,
+          label: table.label,
+          publicToken: table.publicToken,
+        });
       }),
 
     listAll: protectedProcedure.query(async ({ ctx }) => {
@@ -291,7 +390,7 @@ export const appRouter = router({
           customerPhone: phoneSchema,
           orderType: z.literal("dine_in"),
           tableId: z.number().int().positive(),
-          tableToken: z.string().min(12),
+          tableToken: z.string().min(24),
           notes: z.string().optional(),
           total: z.number().int().positive(),
           items: z.array(
@@ -309,7 +408,9 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        const authorizedTable = await getDiningTableByPublicToken(input.tableToken);
+        const authorizedTable = await resolveAuthorizedTableAccess(input.tableToken, {
+          requireAvailable: true,
+        });
         if (!authorizedTable || Number(authorizedTable.id) !== Number(input.tableId)) {
           throw new Error("Pedido presencial permitido apenas por mesa autorizada");
         }
