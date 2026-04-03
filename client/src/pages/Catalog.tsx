@@ -164,12 +164,12 @@ export default function Catalog() {
       <RestaurantHeader showCart />
 
       <main className="container mx-auto py-6 md:py-8">
-        <section className="fogareiro-hero mothers-day-hero mb-8 overflow-hidden rounded-[2rem] border border-white/10 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.28)] sm:p-6 md:p-8">
+        <section className="fogareiro-hero mothers-day-hero mb-8 overflow-hidden rounded-[1.6rem] border border-white/10 p-4 shadow-[0_24px_60px_rgba(0,0,0,0.28)] sm:rounded-[2rem] sm:p-6 md:p-8">
           <div className="relative z-10 max-w-3xl">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.38em] text-accent/90">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-accent/90 sm:text-xs sm:tracking-[0.38em]">
               Especial Dia das Maes
             </p>
-            <h2 className="max-w-2xl text-2xl font-bold leading-tight text-foreground sm:text-3xl md:text-5xl">
+            <h2 className="max-w-2xl text-[1.7rem] font-bold leading-tight text-foreground sm:text-3xl md:text-5xl">
               Sabores intensos, clima de brasa e um cardapio pronto para abrir o apetite.
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
@@ -178,7 +178,7 @@ export default function Catalog() {
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button
                 variant="outline"
-                className="rounded-full border-white/15 bg-black/20 text-foreground hover:bg-accent hover:text-accent-foreground"
+                className="w-full rounded-full border-white/15 bg-black/20 text-foreground hover:bg-accent hover:text-accent-foreground sm:w-auto"
                 onClick={async () => {
                   await pulseLoading("Abrindo acompanhamento do pedido", 950);
                   setLocation("/acompanhar");
@@ -193,7 +193,7 @@ export default function Catalog() {
             <div className="mt-5 rounded-[1.65rem] border border-white/10 bg-black/15 p-4 text-sm text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               {hasPresentialAccess ? (
                 <div className="space-y-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/12 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-accent">
+                  <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-accent/30 bg-accent/12 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent sm:text-xs sm:tracking-[0.24em]">
                     <span className="inline-flex h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_6px_rgba(255,138,109,0.14)]" />
                     Pedido liberado no local
                   </div>
@@ -280,14 +280,14 @@ export default function Catalog() {
                 </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-white/10 bg-background/55 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.25em] text-accent/90">
+                  <span className="rounded-full border border-white/10 bg-background/55 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-accent/90 sm:text-[11px] sm:tracking-[0.25em]">
                     Arraste para o lado
                   </span>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="rounded-full border-accent/35 bg-accent/10 text-accent hover:bg-accent hover:text-accent-foreground"
+                    className="w-full rounded-full border-accent/35 bg-accent/10 text-accent hover:bg-accent hover:text-accent-foreground sm:w-auto"
                     onClick={async () => {
                       await pulseLoading("Abrindo acompanhamento do pedido", 900);
                       setLocation("/acompanhar");
@@ -354,9 +354,9 @@ export default function Catalog() {
                         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent opacity-80" />
                       </div>
                       <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                           <CardTitle className="line-clamp-2">{product.name}</CardTitle>
-                          <span className="rounded-full border border-white/10 bg-background/50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-accent/90">
+                          <span className="w-fit rounded-full border border-white/10 bg-background/50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent/90 sm:tracking-[0.2em]">
                             Destaque
                           </span>
                         </div>
@@ -367,13 +367,13 @@ export default function Catalog() {
                         )}
                       </CardHeader>
                       <CardContent>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-2xl font-bold text-accent">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <span className="text-xl font-bold text-accent sm:text-2xl">
                             {formatPrice(product.price)}
                           </span>
                           <Button
                             size="sm"
-                            className="rounded-full bg-accent px-4 text-accent-foreground hover:bg-accent/90"
+                            className="w-full rounded-full bg-accent px-4 text-accent-foreground hover:bg-accent/90 sm:w-auto"
                             onClick={async (e) => {
                               e.stopPropagation();
                               await pulseLoading("Abrindo detalhes do prato", 900);

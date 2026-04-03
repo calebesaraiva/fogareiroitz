@@ -919,8 +919,8 @@ export default function KitchenPanel() {
 
       <CardContent className="space-y-5">
         <div className="rounded-2xl border border-border/70 bg-muted/60 p-4">
-          <div className="mb-4 flex items-center justify-between gap-3 border-b border-border/60 pb-3">
-            <div>
+          <div className="mb-4 flex flex-col gap-3 border-b border-border/60 pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Itens do pedido</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {order.items.length} item(ns) pedidos pelo cliente
@@ -989,7 +989,7 @@ export default function KitchenPanel() {
             </Button>
             <div>
               <label className="mb-2 block text-sm font-semibold">Tempo estimado de espera</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Input
                   type="number"
                   min="1"
@@ -1001,7 +1001,7 @@ export default function KitchenPanel() {
                       [order.id]: event.target.value,
                     }))
                   }
-                  className="max-w-28"
+                  className="w-full sm:max-w-28"
                 />
                 <span className="flex items-center text-sm text-muted-foreground">minutos</span>
               </div>
@@ -1395,7 +1395,7 @@ export default function KitchenPanel() {
                             key={item.productId}
                             className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/45 p-3"
                           >
-                            <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                               <div>
                                 <p className="font-semibold text-foreground">
                                   {item.quantity}x {item.productName}
@@ -1591,7 +1591,7 @@ export default function KitchenPanel() {
                                 onChange={(event) =>
                                   updateEditDraftQuantity(item.productId, Math.max(1, Number(event.target.value) || 1))
                                 }
-                                className="w-20"
+                                className="w-full sm:w-20"
                               />
                               <Button
                                 type="button"
@@ -1603,7 +1603,7 @@ export default function KitchenPanel() {
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="ml-auto text-destructive hover:bg-destructive/10"
+                                className="w-full text-destructive hover:bg-destructive/10 sm:ml-auto sm:w-auto"
                                 onClick={() => removeEditDraftItem(item.productId)}
                               >
                                 Remover

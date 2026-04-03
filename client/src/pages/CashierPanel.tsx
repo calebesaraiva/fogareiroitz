@@ -518,46 +518,50 @@ export default function CashierPanel() {
                   {pendingOrders.map((order) => (
                     <div
                       key={`pending-cashier-${order.id}`}
-                      className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/20 bg-black/10 p-2"
+                      className="flex flex-col gap-3 rounded-xl border border-amber-300/20 bg-black/10 p-3 sm:flex-row sm:flex-wrap sm:items-center"
                     >
                       <div className="min-w-0 flex-1 text-sm">
                         <strong>Pedido #{order.id}</strong> - {order.customerName}
                         {order.tableNumber ? ` (Mesa ${order.tableNumber})` : ""}
                       </div>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="240"
-                        value={estimateByOrderId[order.id] ?? "20"}
-                        onChange={(e) =>
-                          setEstimateByOrderId((current) => ({
-                            ...current,
-                            [order.id]: e.target.value,
-                          }))
-                        }
-                        className="h-9 w-24"
-                      />
-                      <span className="text-xs text-muted-foreground">min</span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="bg-accent text-accent-foreground hover:bg-accent/90"
-                        onClick={() => handleAcceptInCashier(order)}
-                        disabled={updateStatusMutation.isPending}
-                      >
-                        <CheckCircle2 className="mr-1 h-4 w-4" />
-                        Aceitar
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleRejectInCashier(order)}
-                        disabled={updateStatusMutation.isPending}
-                      >
-                        <XCircle className="mr-1 h-4 w-4" />
-                        Recusar
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                          type="number"
+                          min="1"
+                          max="240"
+                          value={estimateByOrderId[order.id] ?? "20"}
+                          onChange={(e) =>
+                            setEstimateByOrderId((current) => ({
+                              ...current,
+                              [order.id]: e.target.value,
+                            }))
+                          }
+                          className="h-9 w-full sm:w-24"
+                        />
+                        <span className="text-xs text-muted-foreground">min</span>
+                      </div>
+                      <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-accent text-accent-foreground hover:bg-accent/90"
+                          onClick={() => handleAcceptInCashier(order)}
+                          disabled={updateStatusMutation.isPending}
+                        >
+                          <CheckCircle2 className="mr-1 h-4 w-4" />
+                          Aceitar
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleRejectInCashier(order)}
+                          disabled={updateStatusMutation.isPending}
+                        >
+                          <XCircle className="mr-1 h-4 w-4" />
+                          Recusar
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -598,7 +602,7 @@ export default function CashierPanel() {
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button
-                        className="bg-accent text-accent-foreground hover:bg-accent/90"
+                        className="w-full bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto"
                         onClick={() => openReceiveDialog(order)}
                         disabled={markPaidMutation.isPending}
                       >

@@ -1825,7 +1825,7 @@ export default function AdminPanel() {
               </DialogHeader>
 
               <div className="fogareiro-scrollbar max-h-[calc(100dvh-16rem)] space-y-4 overflow-y-auto pr-1">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
                   <div>
                     <label className="mb-2 block text-sm font-semibold">Tempo padrao (segundos)</label>
                     <Input
@@ -1870,8 +1870,8 @@ export default function AdminPanel() {
                   ) : (
                     showcaseSlidesDraft.map((slide, index) => (
                       <div key={slide.id} className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-[160px_minmax(0,1fr)_130px_110px_auto] md:items-start">
-                          <div className="h-24 overflow-hidden rounded-xl border border-border/60 bg-black/25">
+                        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[160px_minmax(0,1fr)_130px_110px_auto] xl:items-start">
+                          <div className="h-24 overflow-hidden rounded-xl border border-border/60 bg-black/25 xl:h-full">
                             <img
                               src={slide.imageUrl.trim() || FALLBACK_PRODUCT_IMAGE}
                               alt={slide.title || `Slide ${index + 1}`}
@@ -2011,7 +2011,7 @@ export default function AdminPanel() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateTable} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-semibold">Numero da mesa</label>
                     <Input
@@ -2060,7 +2060,7 @@ export default function AdminPanel() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateStaff} className="fogareiro-scrollbar space-y-4 overflow-y-auto pr-1">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-semibold">Nome</label>
                     <Input

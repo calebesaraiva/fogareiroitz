@@ -7,7 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useGlobalLoading } from "@/contexts/GlobalLoadingContext";
 import { clearDiningTableAccess, getStoredDiningTableAccess, saveDiningTableAccess } from "@/lib/dineInAccess";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ClipboardCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, QrCode, ShieldAlert, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -31,6 +31,7 @@ export default function Cart() {
     .toLowerCase()
     .includes("mesa nao autorizada");
   const resolvedTable = isTableAccessInvalid ? null : tableAccessQuery.data ?? tableAccess;
+  const canSubmitOrder = !!resolvedTable?.id && !!resolvedTable?.accessToken && !createOrderMutation.isPending;
 
   useEffect(() => {
     if (!isTableAccessInvalid) return;
@@ -182,13 +183,37 @@ export default function Cart() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border/70 bg-card/85 p-4 text-sm text-muted-foreground shadow-[0_12px_28px_rgba(0,0,0,0.12)]">
+            <div className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.14)]">
               {resolvedTable ? (
-                <span>
-                  Pedido vinculado a <strong className="text-foreground">Mesa {resolvedTable.number}</strong>.
-                </span>
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-full border border-accent/20 bg-accent/12 p-2 text-accent">
+                    <ClipboardCheck className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      Pedido vinculado a Mesa {resolvedTable.number}
+                    </p>
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      Sua mesa ja esta autorizada. Preencha os dados do cliente e finalize quando
+                      estiver tudo certo.
+                    </p>
+                  </div>
+                </div>
               ) : (
-                <span>Escaneie o QR da mesa para liberar o pedido presencial.</span>
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-full border border-accent/20 bg-accent/12 p-2 text-accent">
+                    <QrCode className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      Escaneie o QR da mesa para liberar o pedido
+                    </p>
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      O cardapio fica aberto para consulta, mas o checkout presencial so ativa com
+                      uma mesa disponivel autorizada no local.
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -272,7 +297,12 @@ export default function Cart() {
                       placeholder="Ex: Joao Silva"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      className="bg-input text-foreground placeholder-muted-foreground"
+                      disabled={!resolvedTable}
+                      className={
+                        resolvedTable
+                          ? "bg-input text-foreground placeholder-muted-foreground"
+                          : "border-white/10 bg-white/5 text-foreground/75 placeholder:text-white/30"
+                      }
                     />
                   </div>
 
@@ -284,7 +314,12 @@ export default function Cart() {
                       placeholder="(85) 98765-4321"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="bg-input text-foreground placeholder-muted-foreground"
+                      disabled={!resolvedTable}
+                      className={
+                        resolvedTable
+                          ? "bg-input text-foreground placeholder-muted-foreground"
+                          : "border-white/10 bg-white/5 text-foreground/75 placeholder:text-white/30"
+                      }
                       inputMode="tel"
                     />
                     <p className="mt-2 text-xs text-muted-foreground">
@@ -300,7 +335,12 @@ export default function Cart() {
                       placeholder="Ex: aniversario, pressa no preparo, ponto da carne..."
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="w-full rounded-lg border border-input bg-background p-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                      disabled={!resolvedTable}
+                      className={
+                        resolvedTable
+                          ? "w-full rounded-lg border border-input bg-background p-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                          : "w-full rounded-lg border border-white/10 bg-white/5 p-3 text-foreground/75 placeholder:text-white/30 focus:outline-none"
+                      }
                       rows={3}
                     />
                   </div>
@@ -308,14 +348,43 @@ export default function Cart() {
 
                 <Button
                   onClick={submitOrder}
-                  disabled={createOrderMutation.isPending}
-                  className="h-12 w-full gap-2 bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
+                  disabled={!canSubmitOrder}
+                  className={
+                    canSubmitOrder
+                      ? "h-12 w-full gap-2 bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
+                      : "h-12 w-full gap-2 rounded-xl border border-white/10 bg-gradient-to-r from-white/8 via-white/6 to-white/8 font-semibold text-white/80 opacity-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                  }
                 >
-                  <ClipboardCheck className="h-4 w-4" />
+                  {canSubmitOrder ? (
+                    <ClipboardCheck className="h-4 w-4" />
+                  ) : (
+                    <QrCode className="h-4 w-4" />
+                  )}
                   {createOrderMutation.isPending
                     ? "Enviando para a cozinha..."
-                    : "Finalizar pedido"}
+                    : canSubmitOrder
+                      ? "Finalizar pedido"
+                      : "Escaneie o QR da mesa"}
                 </Button>
+
+                {!canSubmitOrder && (
+                  <div className="rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-full border border-accent/20 bg-accent/12 p-2 text-accent">
+                        <ShieldAlert className="h-4 w-4" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">
+                          Pedido liberado somente com QR da mesa
+                        </p>
+                        <p className="text-xs leading-5 text-muted-foreground">
+                          Para proteger o atendimento presencial, o checkout so e ativado quando o
+                          cliente escaneia o QR Code de uma mesa disponivel dentro do restaurante.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <p className="text-center text-xs text-muted-foreground">
                   Seu pedido vai para aprovacao no painel interno da equipe antes do preparo.
