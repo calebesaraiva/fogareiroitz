@@ -99,6 +99,14 @@ type ProductPayload = Omit<InsertProduct, "categoryId"> & {
   categoryName?: string | null;
 };
 
+function clampProductImagePosition(value: number | null | undefined) {
+  return Math.max(0, Math.min(100, Math.round(Number(value ?? 50) || 50)));
+}
+
+function clampProductImageZoom(value: number | null | undefined) {
+  return Math.max(50, Math.min(200, Math.round(Number(value ?? 100) || 100)));
+}
+
 type OrderItemPayload = {
   productId?: number | null;
   productName: string;
@@ -409,6 +417,21 @@ async function ensureAppSchema(sql: postgres.Sql) {
   await sql`
     alter table public.products
     add column if not exists "imageFit" varchar(24) not null default 'cover'
+  `;
+
+  await sql`
+    alter table public.products
+    add column if not exists "imagePositionX" integer not null default 50
+  `;
+
+  await sql`
+    alter table public.products
+    add column if not exists "imagePositionY" integer not null default 50
+  `;
+
+  await sql`
+    alter table public.products
+    add column if not exists "imageZoom" integer not null default 100
   `;
 
   await sql`
@@ -963,17 +986,20 @@ export async function getAllProducts(includeInactive = false): Promise<ProductRe
   if (!db) return [];
 
   const query = db
-    .select({
-      id: products.id,
-      categoryId: products.categoryId,
-      name: products.name,
-      description: products.description,
-      price: products.price,
-      imageUrl: products.imageUrl,
-      imageFit: products.imageFit,
-      imageKey: products.imageKey,
-      ingredients: products.ingredients,
-      isActive: products.isActive,
+      .select({
+        id: products.id,
+        categoryId: products.categoryId,
+        name: products.name,
+        description: products.description,
+        price: products.price,
+        imageUrl: products.imageUrl,
+        imageFit: products.imageFit,
+        imagePositionX: products.imagePositionX,
+        imagePositionY: products.imagePositionY,
+        imageZoom: products.imageZoom,
+        imageKey: products.imageKey,
+        ingredients: products.ingredients,
+        isActive: products.isActive,
       createdAt: products.createdAt,
       updatedAt: products.updatedAt,
       categoryName: categories.name,
@@ -990,17 +1016,20 @@ export async function getProductById(id: number): Promise<ProductRecord | undefi
   if (!db) return undefined;
 
   const result = await db
-    .select({
-      id: products.id,
-      categoryId: products.categoryId,
-      name: products.name,
-      description: products.description,
-      price: products.price,
-      imageUrl: products.imageUrl,
-      imageFit: products.imageFit,
-      imageKey: products.imageKey,
-      ingredients: products.ingredients,
-      isActive: products.isActive,
+      .select({
+        id: products.id,
+        categoryId: products.categoryId,
+        name: products.name,
+        description: products.description,
+        price: products.price,
+        imageUrl: products.imageUrl,
+        imageFit: products.imageFit,
+        imagePositionX: products.imagePositionX,
+        imagePositionY: products.imagePositionY,
+        imageZoom: products.imageZoom,
+        imageKey: products.imageKey,
+        ingredients: products.ingredients,
+        isActive: products.isActive,
       createdAt: products.createdAt,
       updatedAt: products.updatedAt,
       categoryName: categories.name,
@@ -1023,6 +1052,9 @@ export async function createProduct(data: ProductPayload) {
   return db.insert(products).values({
     ...productData,
     categoryId,
+    imagePositionX: clampProductImagePosition(data.imagePositionX),
+    imagePositionY: clampProductImagePosition(data.imagePositionY),
+    imageZoom: clampProductImageZoom(data.imageZoom),
   });
 }
 
@@ -1039,6 +1071,15 @@ export async function updateProduct(id: number, data: Partial<ProductPayload>) {
   if (data.price !== undefined) updateData.price = data.price;
   if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
   if (data.imageFit !== undefined) updateData.imageFit = data.imageFit;
+  if (data.imagePositionX !== undefined) {
+    updateData.imagePositionX = clampProductImagePosition(data.imagePositionX);
+  }
+  if (data.imagePositionY !== undefined) {
+    updateData.imagePositionY = clampProductImagePosition(data.imagePositionY);
+  }
+  if (data.imageZoom !== undefined) {
+    updateData.imageZoom = clampProductImageZoom(data.imageZoom);
+  }
   if (data.imageKey !== undefined) updateData.imageKey = data.imageKey;
   if (data.ingredients !== undefined) updateData.ingredients = data.ingredients;
   if (data.isActive !== undefined) updateData.isActive = data.isActive;

@@ -61,6 +61,9 @@ type Product = {
   price: number;
   imageUrl: string | null;
   imageFit: string;
+  imagePositionX: number;
+  imagePositionY: number;
+  imageZoom: number;
   imageKey: string | null;
   ingredients: string | null;
   isActive: boolean;
@@ -99,6 +102,9 @@ type ProductForm = {
   price: string;
   imageUrl: string;
   imageFit: "cover" | "contain";
+  imagePositionX: number;
+  imagePositionY: number;
+  imageZoom: number;
   ingredients: string;
   isActive: boolean;
 };
@@ -148,6 +154,9 @@ const EMPTY_FORM: ProductForm = {
   price: "",
   imageUrl: "",
   imageFit: "cover",
+  imagePositionX: 50,
+  imagePositionY: 50,
+  imageZoom: 100,
   ingredients: "",
   isActive: true,
 };
@@ -174,6 +183,28 @@ const EMPTY_SHOWCASE_SLIDE = (): ShowcaseSlideForm => ({
 
 const FALLBACK_PRODUCT_IMAGE =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='100%25' height='100%25' fill='%23f3efe8'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23725a3a' font-family='Arial' font-size='36'>Sem imagem</text></svg>";
+
+const getProductImagePresentation = (product: {
+  imageFit: string;
+  imagePositionX?: number | null;
+  imagePositionY?: number | null;
+  imageZoom?: number | null;
+}) => {
+  const objectFit: "contain" | "cover" = product.imageFit === "contain" ? "contain" : "cover";
+  const imagePositionX = Math.max(0, Math.min(100, Number(product.imagePositionX ?? 50)));
+  const imagePositionY = Math.max(0, Math.min(100, Number(product.imagePositionY ?? 50)));
+  const imageZoom = Math.max(50, Math.min(200, Number(product.imageZoom ?? 100)));
+
+  return {
+    className: objectFit === "contain" ? "bg-black/10 p-2" : "",
+    style: {
+      objectFit,
+      objectPosition: `${imagePositionX}% ${imagePositionY}%`,
+      transform: `scale(${imageZoom / 100})`,
+      transformOrigin: "center center" as const,
+    },
+  };
+};
 
 const ORDER_TYPE_LABEL = "Consumir no local";
 const ORDER_STATUS_LABEL: Record<string, string> = {
@@ -504,6 +535,9 @@ export default function AdminPanel() {
         price: (product.price / 100).toString(),
         imageUrl: product.imageUrl ?? "",
         imageFit: product.imageFit === "contain" ? "contain" : "cover",
+        imagePositionX: Number(product.imagePositionX ?? 50),
+        imagePositionY: Number(product.imagePositionY ?? 50),
+        imageZoom: Number(product.imageZoom ?? 100),
         ingredients: product.ingredients ?? "",
         isActive: product.isActive,
       });
@@ -553,6 +587,9 @@ export default function AdminPanel() {
         price: priceInCents,
         imageUrl: formData.imageUrl.trim() || undefined,
         imageFit: formData.imageFit,
+        imagePositionX: formData.imagePositionX,
+        imagePositionY: formData.imagePositionY,
+        imageZoom: formData.imageZoom,
         ingredients: formData.ingredients.trim() || undefined,
         isActive: formData.isActive,
       };
@@ -2432,11 +2469,98 @@ export default function AdminPanel() {
                                 <option value="contain">Encaixar sem cortar</option>
                               </select>
                             </div>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                              <div>
+                                <label className="mb-2 block text-sm font-semibold">
+                                  Zoom
+                                </label>
+                                <input
+                                  type="range"
+                                  min="50"
+                                  max="200"
+                                  step="1"
+                                  value={formData.imageZoom}
+                                  onChange={(e) =>
+                                    setFormData((current) => ({
+                                      ...current,
+                                      imageZoom: Number(e.target.value),
+                                    }))
+                                  }
+                                  className="w-full accent-[var(--accent)]"
+                                />
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {formData.imageZoom}%
+                                </p>
+                              </div>
+                              <div>
+                                <label className="mb-2 block text-sm font-semibold">
+                                  Posição horizontal
+                                </label>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  value={formData.imagePositionX}
+                                  onChange={(e) =>
+                                    setFormData((current) => ({
+                                      ...current,
+                                      imagePositionX: Number(e.target.value),
+                                    }))
+                                  }
+                                  className="w-full accent-[var(--accent)]"
+                                />
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {formData.imagePositionX}%
+                                </p>
+                              </div>
+                              <div>
+                                <label className="mb-2 block text-sm font-semibold">
+                                  Posição vertical
+                                </label>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  value={formData.imagePositionY}
+                                  onChange={(e) =>
+                                    setFormData((current) => ({
+                                      ...current,
+                                      imagePositionY: Number(e.target.value),
+                                    }))
+                                  }
+                                  className="w-full accent-[var(--accent)]"
+                                />
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {formData.imagePositionY}%
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex justify-end">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setFormData((current) => ({
+                                    ...current,
+                                    imageFit: "cover",
+                                    imagePositionX: 50,
+                                    imagePositionY: 50,
+                                    imageZoom: 100,
+                                  }))
+                                }
+                              >
+                                Resetar enquadramento
+                              </Button>
+                            </div>
                             <div className="overflow-hidden rounded-[1.35rem] border border-border bg-muted">
                               <img
                                 src={formData.imageUrl || FALLBACK_PRODUCT_IMAGE}
                                 alt="Pre-visualizacao"
-                                className={`h-52 w-full ${formData.imageFit === "contain" ? "object-contain bg-black/10 p-2" : "object-cover"} sm:h-60 lg:h-72`}
+                                className={`h-52 w-full ${getProductImagePresentation(formData).className} sm:h-60 lg:h-72`}
+                                style={getProductImagePresentation(formData).style}
                               />
                             </div>
                           </div>
@@ -2503,7 +2627,8 @@ export default function AdminPanel() {
                     <img
                       src={product.imageUrl || FALLBACK_PRODUCT_IMAGE}
                       alt={product.name}
-                      className={`h-full w-full ${product.imageFit === "contain" ? "object-contain bg-black/10 p-2" : "object-cover"} transition-transform duration-500 group-hover:scale-105`}
+                      className={`h-full w-full ${getProductImagePresentation(product).className} transition-transform duration-500`}
+                      style={getProductImagePresentation(product).style}
                     />
                     <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4">
                       <Badge variant="secondary" className="backdrop-blur">

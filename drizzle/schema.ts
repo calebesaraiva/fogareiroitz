@@ -70,6 +70,9 @@ export const products = pgTable("products", {
   price: integer("price").notNull(), // Store in cents to avoid floating point issues
   imageUrl: text("imageUrl"),
   imageFit: varchar("imageFit", { length: 24 }).default("cover").notNull(),
+  imagePositionX: integer("imagePositionX").default(50).notNull(),
+  imagePositionY: integer("imagePositionY").default(50).notNull(),
+  imageZoom: integer("imageZoom").default(100).notNull(),
   imageKey: varchar("imageKey", { length: 255 }), // S3 key for deletion
   ingredients: text("ingredients"), // JSON string of available ingredients
   isActive: boolean("isActive").default(true).notNull(),

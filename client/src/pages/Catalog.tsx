@@ -21,6 +21,9 @@ type CatalogProduct = {
   price: number;
   imageUrl: string | null;
   imageFit: "cover" | "contain";
+  imagePositionX: number;
+  imagePositionY: number;
+  imageZoom: number;
   imageKey: string | null;
   ingredients: string | null;
   isActive: boolean;
@@ -76,6 +79,28 @@ const persistCatalogProducts = (products: CatalogProduct[]) => {
   } catch {
     // Ignore localStorage quota and parsing issues to avoid blocking the catalog.
   }
+};
+
+const getProductImagePresentation = (product: {
+  imageFit: "cover" | "contain";
+  imagePositionX?: number | null;
+  imagePositionY?: number | null;
+  imageZoom?: number | null;
+}) => {
+  const objectFit: "contain" | "cover" = product.imageFit === "contain" ? "contain" : "cover";
+  const imagePositionX = Math.max(0, Math.min(100, Number(product.imagePositionX ?? 50)));
+  const imagePositionY = Math.max(0, Math.min(100, Number(product.imagePositionY ?? 50)));
+  const imageZoom = Math.max(50, Math.min(200, Number(product.imageZoom ?? 100)));
+
+  return {
+    className: objectFit === "contain" ? "bg-black/10 p-2" : "",
+    style: {
+      objectFit,
+      objectPosition: `${imagePositionX}% ${imagePositionY}%`,
+      transform: `scale(${imageZoom / 100})`,
+      transformOrigin: "center center" as const,
+    },
+  };
 };
 
 const getCategoryAnchor = (value: string) =>
@@ -421,7 +446,8 @@ export default function Catalog() {
                           alt={product.name}
                           loading="lazy"
                           decoding="async"
-                          className={`h-full w-full ${product.imageFit === "contain" ? "object-contain bg-black/10 p-2" : "object-cover"} transition-transform duration-300 group-hover:scale-105`}
+                          className={`h-full w-full ${getProductImagePresentation(product).className} transition-transform duration-300`}
+                          style={getProductImagePresentation(product).style}
                         />
                         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent opacity-80" />
                       </div>
@@ -474,7 +500,8 @@ export default function Catalog() {
                   <img
                     src={selectedProduct.imageUrl || FALLBACK_IMAGE}
                     alt={selectedProduct.name}
-                    className={`h-full w-full ${selectedProduct.imageFit === "contain" ? "object-contain bg-black/10 p-3" : "object-cover"}`}
+                    className={`h-full w-full ${selectedProduct.imageFit === "contain" ? "bg-black/10 p-3" : ""}`}
+                    style={getProductImagePresentation(selectedProduct).style}
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-4 sm:p-5 lg:p-6">
                     <div className="inline-flex rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium text-white backdrop-blur sm:text-xs">
