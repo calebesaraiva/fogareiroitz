@@ -22,12 +22,12 @@ export default function OrderTracking() {
             variant="outline"
             className="gap-2"
             onClick={async () => {
-              await pulseLoading("Voltando ao cardapio", 950);
+              await pulseLoading("Voltando ao cardápio", 950);
               setLocation("/");
             }}
           >
             <ArrowLeft className="h-4 w-4" />
-            Voltar ao cardapio
+            Voltar ao cardápio
           </Button>
         </div>
 

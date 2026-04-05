@@ -75,7 +75,7 @@ type DraftItem = {
 };
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: "Aguardando aprovacao",
+  pending: "Aguardando aprovação",
   new: "Aprovado",
   preparing: "Em preparo",
   ready: "Pronto",
@@ -272,14 +272,14 @@ export default function KitchenPanel() {
     const hasNewOverdue = overdueIds.some((id) => !previousOverdueIds.includes(id));
 
     if (previousIds.length > 0 && hasNewPending) {
-      toast.success("Novo pedido aguardando aprovacao", {
+      toast.success("Novo pedido aguardando aprovação", {
         description: "Admin e cozinha podem aceitar esse pedido agora.",
       });
     }
 
     if (previousOverdueIds.length > 0 && hasNewOverdue) {
       toast.error("Pedido atrasado na cozinha", {
-        description: "O prazo de preparo estourou e exige atencao imediata.",
+        description: "O prazo de preparo estourou e exige atenção imediata.",
       });
     }
 
@@ -399,7 +399,7 @@ export default function KitchenPanel() {
             orderId: order.id,
             tone: "success",
             title: `Pedido #${order.id} pronto para entrega`,
-            detail: "A equipe ja pode retirar. O sistema finaliza automaticamente pelo tempo.",
+            detail: "A equipe já pode retirar. O sistema finaliza automaticamente pelo tempo.",
           });
           return;
         }
@@ -558,7 +558,7 @@ export default function KitchenPanel() {
       return true;
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel atualizar o status do pedido");
+      toast.error("Não foi possível atualizar o status do pedido");
       return false;
     }
   };
@@ -576,7 +576,7 @@ export default function KitchenPanel() {
     const quantity = Math.max(1, Number(draftQuantity) || 1);
 
     if (!product) {
-      toast.error("Selecione um item do cardapio para adicionar");
+      toast.error("Selecione um item do cardápio para adicionar");
       return;
     }
 
@@ -651,7 +651,7 @@ export default function KitchenPanel() {
     const quantity = Math.max(1, Number(editDraftQuantity) || 1);
 
     if (!product) {
-      toast.error("Selecione um item do cardapio para adicionar");
+      toast.error("Selecione um item do cardápio para adicionar");
       return;
     }
 
@@ -722,7 +722,7 @@ export default function KitchenPanel() {
     event.preventDefault();
 
     if (!canCreateInternal) {
-      toast.error("Apenas o garcom pode abrir pedido presencial manual");
+      toast.error("Apenas o garçom pode abrir pedido presencial manual");
       return;
     }
 
@@ -768,10 +768,10 @@ export default function KitchenPanel() {
 
       resetInternalOrderForm();
       await ordersQuery.refetch();
-      toast.success("Pedido presencial criado sem etapa de aprovacao");
+      toast.success("Pedido presencial criado sem etapa de aprovação");
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel criar o pedido interno");
+      toast.error("Não foi possível criar o pedido interno");
     }
   };
 
@@ -823,7 +823,7 @@ export default function KitchenPanel() {
       toast.success("Pedido atualizado com sucesso");
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel atualizar esse pedido");
+      toast.error("Não foi possível atualizar esse pedido");
     }
   };
 
@@ -970,7 +970,7 @@ export default function KitchenPanel() {
 
         {order.notes && (
           <div className="rounded-xl border border-border/70 bg-background/50 p-3">
-            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Observacoes gerais</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Observações gerais</p>
             <p className="mt-2 text-sm text-foreground">{order.notes}</p>
           </div>
         )}
@@ -1059,7 +1059,7 @@ export default function KitchenPanel() {
         subtitle={
           isWaiterView
             ? "Abrir pedidos presenciais, ajustar comandas e acompanhar a fila em tempo real"
-            : "Pedidos aguardando aprovacao e fila de preparo em tempo real"
+            : "Pedidos aguardando aprovação e fila de preparo em tempo real"
         }
       />
 
@@ -1068,7 +1068,7 @@ export default function KitchenPanel() {
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2 rounded-full bg-background/60 px-3 py-1">
               <BellRing className="h-4 w-4 text-accent" />
-              {stats.pendingOrders} aguardando aprovacao
+              {stats.pendingOrders} aguardando aprovação
             </span>
             <span className="inline-flex items-center gap-2 rounded-full bg-background/60 px-3 py-1">
               <ChefHat className="h-4 w-4 text-accent" />
@@ -1151,7 +1151,7 @@ export default function KitchenPanel() {
                   Alerta de novos pedidos
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Os pedidos feitos no cardapio chegam aqui e no admin como aguardando aprovacao.
+                  Os pedidos feitos no cardápio chegam aqui e no admin como aguardando aprovação.
                 </p>
               </div>
               <Badge className="w-fit bg-accent text-accent-foreground">
@@ -1214,7 +1214,7 @@ export default function KitchenPanel() {
                     Fila da cozinha
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Pedidos aguardando aceite ficam separados da fila ativa para a operacao ficar mais limpa.
+                    Pedidos aguardando aceite ficam separados da fila ativa para a operação ficar mais limpa.
                   </p>
                 </div>
 
@@ -1228,7 +1228,7 @@ export default function KitchenPanel() {
                 <div className="rounded-[1.5rem] border border-accent/20 bg-background/25 p-4">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-foreground">Aguardando aprovacao</p>
+                      <p className="text-sm font-semibold text-foreground">Aguardando aprovação</p>
                       <p className="text-xs text-muted-foreground">
                         Pedidos que ainda precisam ser aceitos ou recusados.
                       </p>
@@ -1238,7 +1238,7 @@ export default function KitchenPanel() {
 
                   {pendingQueue.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-border/70 bg-background/35 p-4 text-sm text-muted-foreground">
-                      Nenhum pedido aguardando aprovacao agora.
+                      Nenhum pedido aguardando aprovação agora.
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-5 2xl:grid-cols-2">
@@ -1280,12 +1280,12 @@ export default function KitchenPanel() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>Pedidos do cardapio entram como aguardando aprovacao.</p>
+                <p>Pedidos do cardápio entram como aguardando aprovação.</p>
                 <p>Admin e cozinha recebem alerta e podem aceitar o pedido.</p>
                 <p>
                   {isWaiterView
-                    ? "Voce pode abrir pedido presencial manual, editar a comanda e acompanhar o andamento da cozinha."
-                    : "Somente o garcom pode abrir pedido presencial manual, sempre com mesa, nome e telefone."}
+                    ? "Você pode abrir pedido presencial manual, editar a comanda e acompanhar o andamento da cozinha."
+                    : "Somente o garçom pode abrir pedido presencial manual, sempre com mesa, nome e telefone."}
                 </p>
               </CardContent>
             </Card>
@@ -1303,7 +1303,7 @@ export default function KitchenPanel() {
                     <div className="grid grid-cols-1 gap-3">
                       <div>
                         <label className="mb-2 block text-sm font-semibold">
-                          Nome do cliente ou identificacao
+                          Nome do cliente ou identificação
                         </label>
                         <Input
                           value={customerName}
@@ -1338,7 +1338,7 @@ export default function KitchenPanel() {
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm font-semibold">Observacoes</label>
+                        <label className="mb-2 block text-sm font-semibold">Observações</label>
                         <textarea
                           value={notes}
                           onChange={(event) => setNotes(event.target.value)}
@@ -1359,7 +1359,7 @@ export default function KitchenPanel() {
                           onChange={(event) => setSelectedProductId(event.target.value)}
                           className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         >
-                          <option value="">Selecione um item do cardapio</option>
+                          <option value="">Selecione um item do cardápio</option>
                           {products.map((product) => (
                             <option key={product.id} value={product.id}>
                               {product.name} - {formatPrice(product.price)}
@@ -1451,7 +1451,7 @@ export default function KitchenPanel() {
             <DialogHeader className="pr-8">
               <DialogTitle>Pedidos finalizados</DialogTitle>
               <DialogDescription>
-                Historico de pedidos entregues ou cancelados, mantido fora da fila principal para deixar a operacao mais limpa.
+                Histórico de pedidos entregues ou cancelados, mantido fora da fila principal para deixar a operação mais limpa.
               </DialogDescription>
             </DialogHeader>
             <div className="fogareiro-scrollbar max-h-[calc(100dvh-12rem)] space-y-4 overflow-y-auto pr-2">
@@ -1473,7 +1473,7 @@ export default function KitchenPanel() {
                 {editingOrder ? `Editar pedido #${editingOrder.id}` : "Editar pedido"}
               </DialogTitle>
               <DialogDescription>
-                Ajuste cliente, observacoes e itens do pedido sem tirar a operacao do ritmo.
+                Ajuste cliente, observações e itens do pedido sem tirar a operação do ritmo.
               </DialogDescription>
             </DialogHeader>
 
@@ -1500,7 +1500,7 @@ export default function KitchenPanel() {
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm font-semibold">Observacoes</label>
+                        <label className="mb-2 block text-sm font-semibold">Observações</label>
                         <textarea
                           value={editNotes}
                           onChange={(event) => setEditNotes(event.target.value)}
@@ -1520,7 +1520,7 @@ export default function KitchenPanel() {
                         onChange={(event) => setEditSelectedProductId(event.target.value)}
                         className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       >
-                        <option value="">Selecione um item do cardapio</option>
+                        <option value="">Selecione um item do cardápio</option>
                         {products.map((product) => (
                           <option key={product.id} value={product.id}>
                             {product.name} - {formatPrice(product.price)}

@@ -25,7 +25,7 @@ type ShowcasePreviewPayload = {
 };
 
 const STATUS_LABEL: Record<ShowcaseOrder["status"], string> = {
-  pending: "Aguardando aprovacao",
+  pending: "Aguardando aprovação",
   new: "Aceito",
   preparing: "Em preparo",
   ready: "Pronto",

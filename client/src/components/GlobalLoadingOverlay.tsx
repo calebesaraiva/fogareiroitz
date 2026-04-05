@@ -5,7 +5,7 @@ type GlobalLoadingOverlayProps = {
 
 export default function GlobalLoadingOverlay({
   visible,
-  message = "Feliz Dia das Maes",
+  message = "Feliz Dia das Mães",
 }: GlobalLoadingOverlayProps) {
   const restaurantName =
     import.meta.env.VITE_APP_TITLE || "Fogareiro ITZ Restaurante";

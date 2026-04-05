@@ -157,8 +157,8 @@ export default function Catalog() {
     if (message.toLowerCase().includes("mesa nao autorizada")) {
       clearDiningTableAccess();
       setTableAccess(null);
-      toast.error("Mesa indisponivel para novo pedido", {
-        description: "Esse QR esta invalido, expirou ou a mesa ja esta em uso no momento.",
+      toast.error("Mesa indisponível para novo pedido", {
+        description: "Esse QR está inválido, expirou ou a mesa já está em uso no momento.",
       });
     }
   }, [mesaToken, tableAccessQuery.error]);
@@ -242,7 +242,7 @@ export default function Catalog() {
     const section = document.getElementById(anchor);
     if (!section) return;
 
-    await pulseLoading("Carregando o cardapio", 650);
+    await pulseLoading("Carregando o cardápio", 650);
     section.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -260,10 +260,10 @@ export default function Catalog() {
               Especial Dia das Maes
             </p>
             <h2 className="max-w-2xl text-[1.7rem] font-bold leading-tight text-foreground sm:text-3xl md:text-5xl">
-              Sabores intensos, clima de brasa e um cardapio pronto para abrir o apetite.
+              Sabores intensos, clima de brasa e um cardápio pronto para abrir o apetite.
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
-              Explore o cardapio completo, descubra os pratos da casa e sinta o clima do Fogareiro antes mesmo de chegar.
+              Explore o cardápio completo, descubra os pratos da casa e sinta o clima do Fogareiro antes mesmo de chegar.
             </p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button
@@ -277,7 +277,7 @@ export default function Catalog() {
                 Acompanhar pedido
               </Button>
               <p className="max-w-md text-xs leading-5 text-muted-foreground">
-                Para acompanhar, informe apenas o numero de telefone usado no pedido.
+                Para acompanhar, informe apenas o número de telefone usado no pedido.
               </p>
             </div>
             <div className="mt-5 rounded-[1.65rem] border border-white/10 bg-black/15 p-4 text-sm text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
@@ -288,7 +288,7 @@ export default function Catalog() {
                     Pedido liberado no local
                   </div>
                   <p className="text-sm leading-6 text-foreground">
-                    Voce esta navegando com acesso presencial ativo para a{" "}
+                    Você está navegando com acesso presencial ativo para a{" "}
                     <strong className="text-accent">Mesa {tableAccess.number}</strong>.
                   </p>
                   <p className="leading-6">
@@ -298,10 +298,10 @@ export default function Catalog() {
               ) : (
                 <div className="space-y-3">
                   <p className="text-sm leading-6 text-foreground">
-                    O cardapio esta aberto para voce conhecer nossos sabores, mas os pedidos sao liberados apenas dentro do restaurante.
+                    O cardápio está aberto para você conhecer nossos sabores, mas os pedidos são liberados apenas dentro do restaurante.
                   </p>
                   <p className="leading-6">
-                    Venha viver a experiencia do Fogareiro ITZ, escolha sua mesa, escaneie o QR Code e prove pratos feitos para surpreender do primeiro aroma ao ultimo detalhe.
+                    Venha viver a experiência do Fogareiro ITZ, escolha sua mesa, escaneie o QR Code e prove pratos feitos para surpreender do primeiro aroma ao último detalhe.
                   </p>
                   <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.22em] text-accent/90">
                     <span className="rounded-full border border-accent/25 bg-accent/10 px-3 py-1.5">
@@ -311,7 +311,7 @@ export default function Catalog() {
                       QR liberado na mesa
                     </span>
                     <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                      Atendimento no salao
+                      Atendimento no salão
                     </span>
                   </div>
                 </div>
@@ -346,7 +346,7 @@ export default function Catalog() {
               <p className="mt-4 text-sm font-semibold uppercase tracking-[0.28em] text-accent/90">
                 Feliz Dia das Maes
               </p>
-              <p className="mt-2 text-muted-foreground">Carregando cardapio...</p>
+              <p className="mt-2 text-muted-foreground">Carregando cardápio...</p>
             </div>
           </div>
         ) : groupedProducts.length === 0 ? (
@@ -366,13 +366,13 @@ export default function Catalog() {
                     Ir direto para uma categoria
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Toque em um botao para navegar pelo cardapio mais rapido
+                    Toque em um botão para navegar pelo cardápio mais rápido
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {isFetching && hasProducts ? (
                     <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-accent/90 sm:text-[11px] sm:tracking-[0.25em]">
-                      Atualizando cardapio
+                      Atualizando cardápio
                     </span>
                   ) : null}
                   <span className="rounded-full border border-white/10 bg-background/55 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-accent/90 sm:text-[11px] sm:tracking-[0.25em]">

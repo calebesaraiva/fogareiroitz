@@ -29,13 +29,13 @@ const getReadableApiError = (error: TRPCClientError<any>) => {
     return "Verifique o telefone informado e tente novamente.";
   }
   if (message.includes("Database not available")) {
-    return "Servidor temporariamente indisponivel. Tente novamente em instantes.";
+    return "Servidor temporariamente indisponível. Tente novamente em instantes.";
   }
   if (message.includes("Unauthorized")) {
-    return "Voce nao tem permissao para realizar essa acao.";
+    return "Você não tem permissão para realizar essa ação.";
   }
 
-  return "Nao foi possivel concluir a acao. Tente novamente.";
+  return "Não foi possível concluir a ação. Tente novamente.";
 };
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {

@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 const PHONE_STORAGE_KEY = "fogareiro:lastCustomerPhone";
 
 const STATUS_LABEL: Record<string, string> = {
-  pending: "Aguardando aprovacao",
+  pending: "Aguardando aprovação",
   new: "Pedido aceito",
   preparing: "Em preparo",
   ready: "Pronto",
@@ -136,7 +136,7 @@ export default function OrderTrackerCard() {
       .join("")
       : `
         <div class="item item-empty">
-          <p class="meta">Os itens desse pedido nao puderam ser exibidos nesta consulta.</p>
+          <p class="meta">Os itens desse pedido não puderam ser exibidos nesta consulta.</p>
         </div>
       `;
 
@@ -274,7 +274,7 @@ export default function OrderTrackerCard() {
             <div class="brand">
               <img src="${restaurantLogo}" alt="${restaurantName}" />
               <h1>${restaurantName}</h1>
-              <p>Feliz Dia das Maes</p>
+              <p>Feliz Dia das Mães</p>
               <div class="brand-meta">
                 <div><strong>CNPJ:</strong> ${RESTAURANT_CNPJ}</div>
                 <div>${RESTAURANT_ADDRESS}</div>
@@ -286,7 +286,7 @@ export default function OrderTrackerCard() {
               <div class="label">Cliente</div>
               <div class="line"><span>Nome</span><strong>${order.customerName}</strong></div>
               <div class="line"><span>Telefone</span><strong>${formatPhone(order.customerPhone || normalizedPhone)}</strong></div>
-              <div class="line"><span>Codigo</span><strong>${order.trackingCode}</strong></div>
+              <div class="line"><span>Código</span><strong>${order.trackingCode}</strong></div>
             </div>
 
             <div class="section">
@@ -296,7 +296,7 @@ export default function OrderTrackerCard() {
 
             ${
               order.notes
-                ? `<div class="section"><div class="label">Observacoes</div><p class="meta">${order.notes}</p></div>`
+                ? `<div class="section"><div class="label">Observações</div><p class="meta">${order.notes}</p></div>`
                 : ""
             }
 
@@ -329,7 +329,7 @@ export default function OrderTrackerCard() {
         <Input
           value={customerPhone}
           onChange={(event) => setCustomerPhone(event.target.value)}
-          placeholder="Digite seu numero de telefone"
+          placeholder="Digite seu número de telefone"
           inputMode="tel"
         />
 
@@ -377,12 +377,12 @@ export default function OrderTrackerCard() {
                 <p className="font-semibold">
                   {order.status === "cancelled"
                     ? "Pedido cancelado"
-                    : "Pedido concluido com sucesso"}
+                    : "Pedido concluído com sucesso"}
                 </p>
                 <p className="mt-1">
                   {order.status === "cancelled"
                     ? "Esse pedido foi cancelado pela equipe."
-                    : "Esse pedido ja foi finalizado e nao aparece mais como pedido em andamento."}
+                    : "Esse pedido já foi finalizado e não aparece mais como pedido em andamento."}
                 </p>
               </div>
             ) : (
@@ -426,7 +426,7 @@ export default function OrderTrackerCard() {
             )}
 
             <div className="text-sm text-muted-foreground">
-              <p>Codigo: {order.trackingCode}</p>
+              <p>Código: {order.trackingCode}</p>
               <p>Status final: {STATUS_LABEL[order.status] || order.status}</p>
               {order.items.length > 0 ? (
                 <div className="mt-3 space-y-2">
@@ -466,7 +466,7 @@ export default function OrderTrackerCard() {
               ) : null}
               {order.status === "cancelled" || order.status === "delivered" ? (
                 <p className="mt-2">
-                  Resumo final disponivel para consulta. Quando houver um novo pedido ativo, ele passa a aparecer aqui automaticamente.
+                  Resumo final disponível para consulta. Quando houver um novo pedido ativo, ele passa a aparecer aqui automaticamente.
                 </p>
               ) : order.estimatedReadyMinutes ? (
                 <div className="mt-3 space-y-3 rounded-2xl border border-border/60 bg-card/55 p-3">
@@ -497,19 +497,19 @@ export default function OrderTrackerCard() {
                         />
                       </div>
                       <div className="flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                        <span>Inicio do preparo</span>
+                        <span>Início do preparo</span>
                         <span>
                           {estimatedProgress.isLate
                             ? `${estimatedProgress.elapsedMinutes} min decorridos`
                             : `${Math.round(estimatedProgress.progress)}% do prazo consumido`}
                         </span>
-                        <span>Previsao final</span>
+                        <span>Previsão final</span>
                       </div>
                     </>
                   ) : null}
                 </div>
               ) : (
-                <p className="mt-2">Tempo estimado ainda nao informado pela cozinha.</p>
+                <p className="mt-2">Tempo estimado ainda não informado pela cozinha.</p>
               )}
             </div>
           </div>

@@ -39,12 +39,12 @@ type PaymentMethod = "cash" | "card" | "pix";
 
 const methodLabel: Record<PaymentMethod, string> = {
   cash: "Dinheiro",
-  card: "Cartao",
+  card: "Cartão",
   pix: "PIX",
 };
 
 const statusLabel: Record<string, string> = {
-  pending: "Aguardando aprovacao",
+  pending: "Aguardando aprovação",
   new: "Aceito",
   preparing: "Em preparo",
   ready: "Pronto",
@@ -63,7 +63,7 @@ const receiptBrand = {
   cnpj: "00.000.000/0001-00",
   instagram: "@fogareiroitz",
   logoUrl: "/logo-fogareiro.png",
-  footerMessage: "Obrigado pela preferencia! Volte sempre.",
+  footerMessage: "Obrigado pela preferência! Volte sempre.",
 };
 
 export default function CashierPanel() {
@@ -196,7 +196,7 @@ export default function CashierPanel() {
     const orderItems = Array.isArray(order.items) ? order.items : [];
     const itemsHtml =
       orderItems.length === 0
-        ? `<div class="line">Itens: nao informado</div>`
+        ? `<div class="line">Itens: não informado</div>`
         : orderItems
             .map((item) => {
               const qty = Number(item.quantity || 0);
@@ -293,14 +293,14 @@ export default function CashierPanel() {
             <div class="line">${line}</div>
             <div class="line">${row("Forma", methodLabel[method])}</div>
             <div class="line">${row("Subtotal", formatPrice(order.total))}</div>
-            <div class="line">${row("Taxa de servico", formatPrice(serviceFeeValue))}</div>
+            <div class="line">${row("Taxa de serviço", formatPrice(serviceFeeValue))}</div>
             <div class="line">${row("Desconto", formatPrice(discountValue))}</div>
             <div class="line">${row("Total", formatPrice(finalTotal))}</div>
             <div class="line">${row("Troco", formatPrice(changeDue))}</div>
             <div class="line">${line}</div>
 
             <div class="center mt strong">${receiptBrand.footerMessage}</div>
-            <div class="center">Nao possui valor fiscal</div>
+            <div class="center">Não possui valor fiscal</div>
             <div class="cut">------------------------------</div>
           </div>
           <script>
@@ -330,7 +330,7 @@ export default function CashierPanel() {
       `Comanda #${order.id}`,
       `Cliente: ${order.customerName}`,
       `Forma: ${methodLabel[method]}`,
-      `Taxa de servico: ${formatPrice(serviceFeeValue)}`,
+      `Taxa de serviço: ${formatPrice(serviceFeeValue)}`,
       `Desconto: ${formatPrice(discountValue)}`,
       `Total pago: ${formatPrice(finalTotal)}`,
       `Troco: ${formatPrice(changeDue)}`,
@@ -401,7 +401,7 @@ export default function CashierPanel() {
       sendWhatsAppReceipt(order, finalTotal, method, changeDue, service, discount);
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel confirmar o pagamento");
+      toast.error("Não foi possível confirmar o pagamento");
     }
   };
 
@@ -421,11 +421,11 @@ export default function CashierPanel() {
         () => closeDayMutation.mutateAsync({ date: `${dateTo}T12:00:00.000Z` }),
         { message: "Fechando o caixa do dia" }
       );
-      toast.success(`Fechamento concluido: ${formatPrice(result.totals.grossTotal)}`);
+      toast.success(`Fechamento concluído: ${formatPrice(result.totals.grossTotal)}`);
       await reportQuery.refetch();
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel fechar o dia");
+      toast.error("Não foi possível fechar o dia");
     }
   };
 
@@ -445,7 +445,7 @@ export default function CashierPanel() {
       toast.success(`Pedido #${order.id} aceito no caixa`);
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel aceitar esse pedido");
+      toast.error("Não foi possível aceitar esse pedido");
     }
   };
 
@@ -468,13 +468,13 @@ export default function CashierPanel() {
       toast.success(`Pedido #${order.id} recusado`);
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel recusar esse pedido");
+      toast.error("Não foi possível recusar esse pedido");
     }
   };
 
   return (
     <div className="mothers-day-shell min-h-screen">
-      <RestaurantHeader showCart={false} title="Caixa" subtitle="Recebimentos e fechamento diario" />
+      <RestaurantHeader showCart={false} title="Caixa" subtitle="Recebimentos e fechamento diário" />
       <div className="border-b border-border bg-card/95">
         <div className="container mx-auto flex flex-wrap items-center justify-between gap-2 py-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -592,7 +592,7 @@ export default function CashierPanel() {
                         <p className="font-semibold">{formatPrice(order.total)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Servico (10%)</p>
+                        <p className="text-xs text-muted-foreground">Serviço (10%)</p>
                         <p className="font-semibold">{formatPrice(preview.service)}</p>
                       </div>
                       <div>
@@ -618,14 +618,14 @@ export default function CashierPanel() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Relatorio do caixa</CardTitle>
+            <CardTitle>Relatório do caixa</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
               <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
               <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-              <Button variant="outline" onClick={() => reportQuery.refetch()}>Atualizar relatorio</Button>
-              <Button onClick={handleCloseDay}>Fechamento diario</Button>
+              <Button variant="outline" onClick={() => reportQuery.refetch()}>Atualizar relatório</Button>
+              <Button onClick={handleCloseDay}>Fechamento diário</Button>
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -634,7 +634,7 @@ export default function CashierPanel() {
                 <p className="text-lg font-semibold text-accent">{formatPrice(reportQuery.data?.totals.grossTotal ?? 0)}</p>
               </div>
               <div className="rounded-xl border border-border/70 p-3">
-                <p className="text-xs text-muted-foreground">Taxa de servico</p>
+                <p className="text-xs text-muted-foreground">Taxa de serviço</p>
                 <p className="text-lg font-semibold">{formatPrice(reportQuery.data?.totals.serviceFeeTotal ?? 0)}</p>
               </div>
               <div className="rounded-xl border border-border/70 p-3">
@@ -642,7 +642,7 @@ export default function CashierPanel() {
                 <p className="text-lg font-semibold">{reportQuery.data?.totals.count ?? 0}</p>
               </div>
               <div className="rounded-xl border border-border/70 p-3">
-                <p className="text-xs text-muted-foreground">Liquido sem servico</p>
+                <p className="text-xs text-muted-foreground">Líquido sem serviço</p>
                 <p className="text-lg font-semibold">{formatPrice(reportQuery.data?.totals.netWithoutService ?? 0)}</p>
               </div>
             </div>
@@ -685,7 +685,7 @@ export default function CashierPanel() {
                     receiveMethod === "card" ? "border-accent bg-accent/20 text-accent" : "border-border bg-background"
                   }`}
                 >
-                  Cartao
+                  Cartão
                 </button>
                 <button
                   type="button"
@@ -704,7 +704,7 @@ export default function CashierPanel() {
                   checked={!receiveRemoveService}
                   onChange={(e) => setReceiveRemoveService(!e.target.checked)}
                 />
-                Cobrar taxa de servico de 10%
+                Cobrar taxa de serviço de 10%
               </label>
 
               <Input
@@ -725,7 +725,7 @@ export default function CashierPanel() {
               {calcPayment(receiveOrder, receiveMethod, receiveRemoveService, receiveAmount, receiveDiscount).discount > 0 ? (
                 <div className="space-y-2 rounded-xl border border-amber-300/30 bg-amber-300/10 p-3">
                   <p className="text-sm font-semibold text-amber-200">
-                    Autorizacao obrigatoria de administrador para desconto
+                    Autorização obrigatória de administrador para desconto
                   </p>
                   <Input
                     type="email"
@@ -748,7 +748,7 @@ export default function CashierPanel() {
                   <p className="font-semibold">{formatPrice(receiveOrder.total)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Taxa de servico</p>
+                  <p className="text-xs text-muted-foreground">Taxa de serviço</p>
                   <p className="font-semibold">{formatPrice(calcPayment(receiveOrder, receiveMethod, receiveRemoveService, receiveAmount, receiveDiscount).service)}</p>
                 </div>
                 <div>

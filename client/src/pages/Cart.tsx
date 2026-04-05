@@ -36,8 +36,8 @@ export default function Cart() {
   useEffect(() => {
     if (!isTableAccessInvalid) return;
     clearDiningTableAccess();
-    toast.error("Mesa indisponivel para novo pedido", {
-      description: "Esse acesso expirou, ficou invalido ou a mesa ja esta em uso no momento.",
+    toast.error("Mesa indisponível para novo pedido", {
+      description: "Esse acesso expirou, ficou inválido ou a mesa já está em uso no momento.",
     });
   }, [isTableAccessInvalid]);
 
@@ -68,14 +68,14 @@ export default function Cart() {
     }
 
     if (items.length === 0) {
-      toast.error("Seu carrinho esta vazio", {
+      toast.error("Seu carrinho está vazio", {
         description: "Adicione pelo menos um item antes de finalizar o pedido.",
       });
       return false;
     }
 
     if (!resolvedTable?.id || !resolvedTable?.accessToken) {
-      toast.error("Pedido presencial nao autorizado", {
+      toast.error("Pedido presencial não autorizado", {
         description: "Escaneie o QR da mesa dentro do restaurante para liberar o pedido.",
       });
       return false;
@@ -83,7 +83,7 @@ export default function Cart() {
 
     if (normalizedPhone.length < 10) {
       toast.error("Informe um telefone para contato", {
-        description: "Use um numero valido com DDD. Ele sera usado para acompanhar o pedido.",
+        description: "Use um número válido com DDD. Ele será usado para acompanhar o pedido.",
       });
       return false;
     }
@@ -129,7 +129,7 @@ export default function Cart() {
       setLocation("/acompanhar");
     } catch (error) {
       console.error("Error creating order:", error);
-      toast.error("Nao foi possivel finalizar o pedido", {
+      toast.error("Não foi possível finalizar o pedido", {
         description: "Tente novamente em alguns instantes.",
       });
     }
@@ -145,17 +145,17 @@ export default function Cart() {
             <div className="text-center">
               <h2 className="mb-2 text-2xl font-bold text-foreground">Carrinho vazio</h2>
               <p className="mb-6 text-muted-foreground">
-                Adicione alguns pratos ao seu carrinho para comecar
+                Adicione alguns pratos ao seu carrinho para começar
               </p>
               <Button
                 onClick={async () => {
-                  await pulseLoading("Voltando ao cardapio", 950);
+                  await pulseLoading("Voltando ao cardápio", 950);
                   setLocation("/");
                 }}
                 className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Ver cardapio
+                Ver cardápio
               </Button>
             </div>
           </div>
@@ -194,7 +194,7 @@ export default function Cart() {
                       Pedido vinculado a Mesa {resolvedTable.number}
                     </p>
                     <p className="text-xs leading-5 text-muted-foreground">
-                      Sua mesa ja esta autorizada. Preencha os dados do cliente e finalize quando
+                      Sua mesa já está autorizada. Preencha os dados do cliente e finalize quando
                       estiver tudo certo.
                     </p>
                   </div>
@@ -209,8 +209,8 @@ export default function Cart() {
                       Escaneie o QR da mesa para liberar o pedido
                     </p>
                     <p className="text-xs leading-5 text-muted-foreground">
-                      O cardapio fica aberto para consulta, mas o checkout presencial so ativa com
-                      uma mesa disponivel autorizada no local.
+                      O cardápio fica aberto para consulta, mas o checkout presencial só ativa com
+                      uma mesa disponível autorizada no local.
                     </p>
                   </div>
                 </div>
@@ -294,7 +294,7 @@ export default function Cart() {
                   <div>
                     <label className="mb-2 block text-sm font-semibold">Nome do cliente</label>
                     <Input
-                      placeholder="Ex: Joao Silva"
+                      placeholder="Ex: João Silva"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       disabled={!resolvedTable}
@@ -323,16 +323,16 @@ export default function Cart() {
                       inputMode="tel"
                     />
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Esse mesmo telefone sera pedido na tela de acompanhamento.
+                      Esse mesmo telefone será pedido na tela de acompanhamento.
                     </p>
                   </div>
 
                   <div>
                     <label className="mb-2 block text-sm font-semibold">
-                      Observacoes do pedido
+                      Observações do pedido
                     </label>
                     <textarea
-                      placeholder="Ex: aniversario, pressa no preparo, ponto da carne..."
+                      placeholder="Ex: aniversário, pressa no preparo, ponto da carne..."
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       disabled={!resolvedTable}
@@ -378,8 +378,8 @@ export default function Cart() {
                           Pedido liberado somente com QR da mesa
                         </p>
                         <p className="text-xs leading-5 text-muted-foreground">
-                          Para proteger o atendimento presencial, o checkout so e ativado quando o
-                          cliente escaneia o QR Code de uma mesa disponivel dentro do restaurante.
+                          Para proteger o atendimento presencial, o checkout só é ativado quando o
+                          cliente escaneia o QR Code de uma mesa disponível dentro do restaurante.
                         </p>
                       </div>
                     </div>
@@ -387,7 +387,7 @@ export default function Cart() {
                 )}
 
                 <p className="text-center text-xs text-muted-foreground">
-                  Seu pedido vai para aprovacao no painel interno da equipe antes do preparo.
+                  Seu pedido vai para aprovação no painel interno da equipe antes do preparo.
                   Use o mesmo telefone na tela de acompanhamento.
                 </p>
               </CardContent>

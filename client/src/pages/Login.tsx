@@ -79,7 +79,7 @@ export default function Login() {
       setLocation("/admin");
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel entrar", {
+      toast.error("Não foi possível entrar", {
         description: "Verifique email e senha e tente novamente.",
       });
     }
@@ -115,7 +115,7 @@ export default function Login() {
           <CardHeader className="space-y-2">
             <CardTitle className="text-2xl">Entrar</CardTitle>
             <CardDescription>
-              Use seu email e senha para acessar o painel administrativo, cozinha, garcom ou caixa.
+              Use seu email e senha para acessar o painel administrativo, cozinha, garçom ou caixa.
             </CardDescription>
           </CardHeader>
 
@@ -127,7 +127,7 @@ export default function Login() {
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="voce@fogareiroitz.com"
+                  placeholder="você@fogareiroitz.com"
                 />
               </div>
 
@@ -165,11 +165,11 @@ export default function Login() {
               variant="outline"
               className="h-12 w-full border-border text-foreground hover:bg-muted"
               onClick={async () => {
-                await pulseLoading("Voltando ao cardapio", 950);
+                await pulseLoading("Voltando ao cardápio", 950);
                 setLocation("/");
               }}
             >
-              Voltar ao Cardapio
+              Voltar ao Cardápio
             </Button>
           </CardContent>
         </Card>

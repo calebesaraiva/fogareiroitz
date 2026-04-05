@@ -208,7 +208,7 @@ const getProductImagePresentation = (product: {
 
 const ORDER_TYPE_LABEL = "Consumir no local";
 const ORDER_STATUS_LABEL: Record<string, string> = {
-  pending: "Aguardando aprovacao",
+  pending: "Aguardando aprovação",
   new: "Aceito",
   preparing: "Em preparo",
   ready: "Pronto",
@@ -267,7 +267,7 @@ export default function AdminPanel() {
   const [autoPreparingPercent, setAutoPreparingPercent] = useState("15");
   const [autoDeliveredGraceMinutes, setAutoDeliveredGraceMinutes] = useState("8");
   const [showcaseTitle, setShowcaseTitle] = useState("Fogareiro ITZ Restaurante");
-  const [showcaseSubtitle, setShowcaseSubtitle] = useState("Cardapio da casa");
+  const [showcaseSubtitle, setShowcaseSubtitle] = useState("Cardápio da casa");
   const [showcaseDefaultSeconds, setShowcaseDefaultSeconds] = useState("6");
   const [showcaseSlidesDraft, setShowcaseSlidesDraft] = useState<ShowcaseSlideForm[]>([]);
   const previousPendingOrderIdsRef = useRef<number[]>([]);
@@ -395,7 +395,7 @@ export default function AdminPanel() {
     const hasNewPending = pendingIds.some((id) => !previousIds.includes(id));
 
     if (previousIds.length > 0 && hasNewPending) {
-      toast.success("Novo pedido aguardando aprovacao no admin", {
+      toast.success("Novo pedido aguardando aprovação no admin", {
         description: "A equipe pode aceitar esse pedido pela cozinha ou acompanhar por aqui.",
       });
     }
@@ -408,7 +408,7 @@ export default function AdminPanel() {
     setAutoPreparingPercent(String(settingsQuery.data.autoPreparingPercent ?? 15));
     setAutoDeliveredGraceMinutes(String(settingsQuery.data.autoDeliveredGraceMinutes ?? 8));
     setShowcaseTitle(String(settingsQuery.data.showcaseTitle ?? "Fogareiro ITZ Restaurante"));
-    setShowcaseSubtitle(String(settingsQuery.data.showcaseSubtitle ?? "Cardapio da casa"));
+    setShowcaseSubtitle(String(settingsQuery.data.showcaseSubtitle ?? "Cardápio da casa"));
     setShowcaseDefaultSeconds(String(settingsQuery.data.showcaseSlideSeconds ?? 6));
     const slides = Array.isArray(settingsQuery.data.showcaseSlides)
       ? settingsQuery.data.showcaseSlides.map((slide, index) => ({
@@ -488,7 +488,7 @@ export default function AdminPanel() {
 
     pdf.setFontSize(12);
     pdf.setFont("helvetica", "normal");
-    pdf.text("Especial Dia das Maes", pageWidth / 2, 38, { align: "center" });
+    pdf.text("Especial Dia das Mães", pageWidth / 2, 38, { align: "center" });
 
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(28);
@@ -500,7 +500,7 @@ export default function AdminPanel() {
 
     pdf.setFontSize(11);
     pdf.text(
-      "Escaneie este QR Code para abrir o cardapio presencial e registrar o pedido da mesa.",
+      "Escaneie este QR Code para abrir o cardápio presencial e registrar o pedido da mesa.",
       pageWidth / 2,
       178,
       { align: "center", maxWidth: 150 }
@@ -567,13 +567,13 @@ export default function AdminPanel() {
     event.preventDefault();
 
     if (!formData.name.trim() || !formData.price.trim() || !formData.categoryName.trim()) {
-      toast.error("Nome, categoria e preco sao obrigatorios");
+      toast.error("Nome, categoria e preço são obrigatórios");
       return;
     }
 
     const priceInCents = Math.round(parseFloat(formData.price) * 100);
     if (!Number.isFinite(priceInCents) || priceInCents <= 0) {
-      toast.error("Preco invalido", {
+      toast.error("Preço inválido", {
         description: "Informe um valor maior que zero.",
       });
       return;
@@ -597,12 +597,12 @@ export default function AdminPanel() {
       if (editingProduct) {
         await withLoading(
           () => updateMutation.mutateAsync({ id: Number(editingProduct.id), ...payload }),
-          { message: "Salvando produto no cardapio" }
+          { message: "Salvando produto no cardápio" }
         );
         toast.success("Produto atualizado com sucesso");
       } else {
         await withLoading(() => createMutation.mutateAsync(payload), {
-          message: "Criando produto no cardapio",
+          message: "Criando produto no cardápio",
         });
         toast.success("Produto criado com sucesso");
       }
@@ -624,9 +624,9 @@ export default function AdminPanel() {
   const handleDelete = async (id: number) => {
     try {
       await withLoading(() => deleteMutation.mutateAsync({ id: Number(id) }), {
-        message: "Removendo produto do cardapio",
+        message: "Removendo produto do cardápio",
       });
-      toast.success("Item removido do cardapio");
+      toast.success("Item removido do cardápio");
       await productsQuery.refetch();
     } catch (error) {
       console.error(error);
@@ -644,11 +644,11 @@ export default function AdminPanel() {
           }),
         {
           message: product.isActive
-            ? "Ocultando item do cardapio"
-            : "Reativando item no cardapio",
+            ? "Ocultando item do cardápio"
+            : "Reativando item no cardápio",
         }
       );
-      toast.success(product.isActive ? "Item ocultado do cardapio" : "Item ativado no cardapio");
+      toast.success(product.isActive ? "Item ocultado do cardápio" : "Item ativado no cardápio");
       await productsQuery.refetch();
     } catch (error) {
       console.error(error);
@@ -682,7 +682,7 @@ export default function AdminPanel() {
       toast.success("Login criado com sucesso");
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel criar esse login");
+      toast.error("Não foi possível criar esse login");
     }
   };
 
@@ -701,7 +701,7 @@ export default function AdminPanel() {
       toast.success(member.isActive ? "Acesso desativado" : "Acesso reativado");
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel atualizar esse acesso");
+      toast.error("Não foi possível atualizar esse acesso");
     }
   };
 
@@ -726,7 +726,7 @@ export default function AdminPanel() {
       toast.success("Senha atualizada com sucesso");
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel atualizar a senha");
+      toast.error("Não foi possível atualizar a senha");
     }
   };
 
@@ -735,7 +735,7 @@ export default function AdminPanel() {
 
     const tableNumber = Number(tableForm.number);
     if (!Number.isInteger(tableNumber) || tableNumber <= 0) {
-      toast.error("Informe um numero de mesa valido");
+      toast.error("Informe um número de mesa válido");
       return;
     }
 
@@ -753,14 +753,14 @@ export default function AdminPanel() {
       setIsCreateTableOpen(false);
       await tablesQuery.refetch();
       await buildTableQrPdf(createdTable);
-      toast.success(`Mesa ${createdTable.number} cadastrada com PDF pronto para impressao`);
+      toast.success(`Mesa ${createdTable.number} cadastrada com PDF pronto para impressão`);
     } catch (error) {
       console.error(error);
       const message = error instanceof Error ? error.message : String(error);
       if (message.toLowerCase().includes("ja cadastrada")) {
         toast.error(message);
       } else {
-        toast.error("Nao foi possivel cadastrar essa mesa");
+        toast.error("Não foi possível cadastrar essa mesa");
       }
     }
   };
@@ -771,7 +771,7 @@ export default function AdminPanel() {
       toast.success(`Link da Mesa ${table.number} copiado`);
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel copiar o link da mesa");
+      toast.error("Não foi possível copiar o link da mesa");
     }
   };
 
@@ -783,7 +783,7 @@ export default function AdminPanel() {
       toast.success(`PDF da Mesa ${table.number} gerado`);
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel gerar o PDF dessa mesa");
+      toast.error("Não foi possível gerar o PDF dessa mesa");
     }
   };
 
@@ -798,13 +798,13 @@ export default function AdminPanel() {
             autoPreparingPercent: preparingPercent,
             autoDeliveredGraceMinutes: graceMinutes,
           }),
-        { message: "Salvando configuracoes de automacao" }
+        { message: "Salvando configurações de automação" }
       );
       await settingsQuery.refetch();
-      toast.success("Configuracao de automacao atualizada");
+      toast.success("Configuração de automação atualizada");
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel salvar as configuracoes");
+      toast.error("Não foi possível salvar as configurações");
     }
   };
 
@@ -862,14 +862,14 @@ export default function AdminPanel() {
             showcaseSubtitle: payload.showcaseSubtitle,
             showcaseSlides: payload.showcaseSlides,
           }),
-        { message: "Salvando album da TV" }
+        { message: "Salvando álbum da TV" }
       );
       await settingsQuery.refetch();
       setIsShowcaseAlbumOpen(false);
-      toast.success("Album da TV atualizado");
+      toast.success("Álbum da TV atualizado");
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel salvar o album da TV");
+      toast.error("Não foi possível salvar o álbum da TV");
     }
   };
 
@@ -888,7 +888,7 @@ export default function AdminPanel() {
     return {
       showcaseSlideSeconds: defaultSeconds,
       showcaseTitle: showcaseTitle.trim() || "Fogareiro ITZ Restaurante",
-      showcaseSubtitle: showcaseSubtitle.trim() || "Cardapio da casa",
+      showcaseSubtitle: showcaseSubtitle.trim() || "Cardápio da casa",
       showcaseSlides: slides,
     };
   };
@@ -908,7 +908,7 @@ export default function AdminPanel() {
       }
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel abrir o preview");
+      toast.error("Não foi possível abrir o preview");
     }
   };
 
@@ -928,15 +928,15 @@ export default function AdminPanel() {
             showcaseSubtitle: payload.showcaseSubtitle,
             showcaseSlides: payload.showcaseSlides,
           }),
-        { message: "Publicando album da TV" }
+        { message: "Publicando álbum da TV" }
       );
       await settingsQuery.refetch();
       setIsShowcaseAlbumOpen(false);
       window.open("/painel-clientes", "_blank");
-      toast.success("Album publicado com sucesso");
+      toast.success("Álbum publicado com sucesso");
     } catch (error) {
       console.error(error);
-      toast.error("Nao foi possivel publicar o album");
+      toast.error("Não foi possível publicar o álbum");
     }
   };
 
@@ -989,7 +989,7 @@ export default function AdminPanel() {
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-background/70 px-3 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
               <BellRing className="h-4 w-4 text-accent" />
-              {stats.waitingApproval} aguardando aprovacao
+              {stats.waitingApproval} aguardando aprovação
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-background/70 px-3 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
               <ShieldCheck className="h-4 w-4 text-accent" />
@@ -1052,8 +1052,8 @@ export default function AdminPanel() {
                 Tudo o que o restaurante precisa, logo na entrada do painel.
               </h2>
               <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-                Monitore operacao, acompanhe pedidos e tome decisoes mais rapido com os
-                indicadores principais, a equipe e a gestao do cardapio em um unico lugar.
+                Monitore operação, acompanhe pedidos e tome decisões mais rápido com os
+                indicadores principais, a equipe e a gestão do cardápio em um único lugar.
               </p>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-white/8 bg-background/25 p-4">
@@ -1068,7 +1068,7 @@ export default function AdminPanel() {
                 <div className="rounded-2xl border border-white/8 bg-background/25 p-4">
                   <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-muted-foreground">
                     <ClipboardList className="h-4 w-4 text-accent" />
-                    Cardapio
+                    Cardápio
                   </div>
                   <p className="mt-3 text-sm text-foreground">
                     {stats.activeProducts} itens ativos e {stats.hiddenProducts} ocultos.
@@ -1080,7 +1080,7 @@ export default function AdminPanel() {
                     Equipe
                   </div>
                   <p className="mt-3 text-sm text-foreground">
-                    Painel pronto para administrar equipe e operacao.
+                    Painel pronto para administrar equipe e operação.
                   </p>
                 </div>
               </div>
@@ -1119,10 +1119,10 @@ export default function AdminPanel() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                      Ticket medio
+                      Ticket médio
                     </p>
                     <p className="mt-2 text-3xl font-black text-foreground">{formatPrice(stats.averageTicket)}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">Media por pedido no mes</p>
+                    <p className="mt-2 text-xs text-muted-foreground">Média por pedido no mês</p>
                   </div>
                   <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/8 text-foreground">
                     <Sparkles className="h-5 w-5" />
@@ -1139,10 +1139,10 @@ export default function AdminPanel() {
             onClick={() => scrollToSection("admin-mesas")}
             className="fogareiro-admin-shortcut rounded-[1.45rem] border border-border/70 bg-card/78 p-4 text-left shadow-[0_16px_42px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-accent/35 hover:bg-card"
           >
-            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Navegacao</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Navegação</p>
             <p className="mt-2 font-semibold text-foreground">Mesas e QR Codes</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Cadastre mesas e gere os PDFs de impressao.
+              Cadastre mesas e gere os PDFs de impressão.
             </p>
           </button>
 
@@ -1154,7 +1154,7 @@ export default function AdminPanel() {
             <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Equipe</p>
             <p className="mt-2 font-semibold text-foreground">Logins e acessos</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Crie usuarios e deixe a operacao organizada.
+              Crie usuários e deixe a operação organizada.
             </p>
           </button>
 
@@ -1187,7 +1187,7 @@ export default function AdminPanel() {
             onClick={() => scrollToSection("admin-cardapio")}
             className="fogareiro-admin-shortcut rounded-[1.45rem] border border-border/70 bg-card/78 p-4 text-left shadow-[0_16px_42px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-accent/35 hover:bg-card"
           >
-            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Cardapio</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Cardápio</p>
             <p className="mt-2 font-semibold text-foreground">Produtos e categorias</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Atualize itens, imagens e destaques da casa.
@@ -1200,9 +1200,9 @@ export default function AdminPanel() {
             className="fogareiro-admin-shortcut rounded-[1.45rem] border border-border/70 bg-card/78 p-4 text-left shadow-[0_16px_42px_rgba(0,0,0,0.12)] transition hover:-translate-y-0.5 hover:border-accent/35 hover:bg-card"
           >
             <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Tela da TV</p>
-            <p className="mt-2 font-semibold text-foreground">Album de slides</p>
+            <p className="mt-2 font-semibold text-foreground">Álbum de slides</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Escolha fotos exclusivas e tempo de exibicao.
+              Escolha fotos exclusivas e tempo de exibição.
             </p>
           </button>
 
@@ -1214,7 +1214,7 @@ export default function AdminPanel() {
             <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Tela clientes</p>
             <p className="mt-2 font-semibold text-foreground">Painel vitrine</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Mostra logo, fotos dos pratos e ultimos pedidos ao vivo.
+              Mostra logo, fotos dos pratos e últimos pedidos ao vivo.
             </p>
           </button>
         </section>
@@ -1233,7 +1233,7 @@ export default function AdminPanel() {
               <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
                 {stats.activeProducts}
               </p>
-              <p className="mt-2 text-xs text-muted-foreground">Itens visiveis no cardapio</p>
+              <p className="mt-2 text-xs text-muted-foreground">Itens visíveis no cardápio</p>
             </CardContent>
           </Card>
           <Card className={metricCardClass}>
@@ -1249,7 +1249,7 @@ export default function AdminPanel() {
               <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
                 {stats.hiddenProducts}
               </p>
-              <p className="mt-2 text-xs text-muted-foreground">Itens fora da exibicao</p>
+              <p className="mt-2 text-xs text-muted-foreground">Itens fora da exibição</p>
             </CardContent>
           </Card>
           <Card className={`${metricCardClass} ring-1 ring-accent/25`}>
@@ -1281,7 +1281,7 @@ export default function AdminPanel() {
               <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
                 {stats.pendingOrders}
               </p>
-              <p className="mt-2 text-xs text-muted-foreground">Fluxos ainda nao encerrados</p>
+              <p className="mt-2 text-xs text-muted-foreground">Fluxos ainda não encerrados</p>
             </CardContent>
           </Card>
           <Card className={metricCardClass}>
@@ -1297,7 +1297,7 @@ export default function AdminPanel() {
               <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
                 {stats.categories}
               </p>
-              <p className="mt-2 text-xs text-muted-foreground">Grupos ativos no catalogo</p>
+              <p className="mt-2 text-xs text-muted-foreground">Grupos ativos no catálogo</p>
             </CardContent>
           </Card>
           <Card className={metricCardClass}>
@@ -1329,14 +1329,14 @@ export default function AdminPanel() {
               <p className="mt-3 text-2xl font-bold text-destructive sm:text-3xl">
                 {stats.cancelledOrders}
               </p>
-              <p className="mt-2 text-xs text-muted-foreground">Pedidos que nao seguiram</p>
+              <p className="mt-2 text-xs text-muted-foreground">Pedidos que não seguiram</p>
             </CardContent>
           </Card>
           <Card className={metricCardClass}>
             <CardContent className="p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                  Entregues no mes
+                  Entregues no mês
                 </p>
                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-white/8 text-foreground">
                   <PackageCheck className="h-4 w-4" />
@@ -1352,7 +1352,7 @@ export default function AdminPanel() {
             <CardContent className="p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                  Faturamento do mes
+                  Faturamento do mês
                 </p>
                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-accent/14 text-accent">
                   <WalletCards className="h-4 w-4" />
@@ -1362,7 +1362,7 @@ export default function AdminPanel() {
                 {formatPrice(stats.monthlyRevenue)}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                {stats.monthlyCancelled} cancelado(s) no mes
+                {stats.monthlyCancelled} cancelado(s) no mês
               </p>
             </CardContent>
           </Card>
@@ -1376,7 +1376,7 @@ export default function AdminPanel() {
             <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-2xl border border-border/70 bg-background/40 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                 <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                  Ticket medio do mes
+                  Ticket médio do mês
                 </p>
                 <p className="mt-3 text-2xl font-bold text-foreground">
                   {formatPrice(stats.averageTicket)}
@@ -1392,7 +1392,7 @@ export default function AdminPanel() {
               </div>
               <div className="rounded-2xl border border-border/70 bg-background/40 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                 <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                  Cancelamentos do mes
+                  Cancelamentos do mês
                 </p>
                 <p className="mt-3 text-2xl font-bold text-destructive">
                   {stats.monthlyCancelled}
@@ -1408,7 +1408,7 @@ export default function AdminPanel() {
             <CardContent className="space-y-3">
               <div className="rounded-2xl border border-border/70 bg-background/40 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Receita presencial no mes</span>
+                  <span className="text-sm text-muted-foreground">Receita presencial no mês</span>
                   <strong className="text-foreground">{formatPrice(stats.monthlyRevenue)}</strong>
                 </div>
               </div>
@@ -1422,7 +1422,7 @@ export default function AdminPanel() {
               </div>
               <div className="rounded-2xl border border-border/70 bg-background/40 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Mesas em operacao</span>
+                  <span className="text-sm text-muted-foreground">Mesas em operação</span>
                   <strong className="text-foreground">
                     {diningTables.filter((table) => occupiedTableIds.has(Number(table.id))).length}
                   </strong>
@@ -1483,7 +1483,7 @@ export default function AdminPanel() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MonitorPlay className="h-5 w-5 text-accent" />
-                Album da TV (separado do cardapio)
+                Álbum da TV (separado do cardápio)
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 Cadastre fotos exclusivas para a tela do cliente, sem depender das imagens dos pratos.
@@ -1502,7 +1502,7 @@ export default function AdminPanel() {
                   </p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-background/35 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Tempo padrao</p>
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Tempo padrão</p>
                   <p className="mt-2 text-2xl font-bold text-foreground">{showcaseDefaultSeconds}s</p>
                 </div>
               </div>
@@ -1513,7 +1513,7 @@ export default function AdminPanel() {
                   onClick={() => setIsShowcaseAlbumOpen(true)}
                   className="bg-accent text-accent-foreground hover:bg-accent/90"
                 >
-                  Gerenciar album da TV
+                  Gerenciar álbum da TV
                 </Button>
                 <Button type="button" variant="outline" onClick={() => window.open("/painel-clientes", "_blank")}>
                   Abrir painel de clientes
@@ -1531,8 +1531,8 @@ export default function AdminPanel() {
                 Caixa e comandas
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Pagamento concentrado no caixa. Toda comanda entra com 10% de garcom por padrao,
-                com opcao de remover se o cliente nao quiser.
+                Pagamento concentrado no caixa. Toda comanda entra com 10% de garçom por padrão,
+                com opção de remover se o cliente não quiser.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1543,7 +1543,7 @@ export default function AdminPanel() {
                 <Input
                   value={cashierSearch}
                   onChange={(event) => setCashierSearch(event.target.value)}
-                  placeholder="Buscar por nome, telefone ou numero da mesa"
+                  placeholder="Buscar por nome, telefone ou número da mesa"
                 />
                 <Badge variant="outline" className="w-fit">
                   {filteredCashierOrders.length} conta(s) pendente(s)
@@ -1616,11 +1616,11 @@ export default function AdminPanel() {
                   Novos pedidos aguardando aceite
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Assim que alguem pedir pelo cardapio, a equipe recebe esse aviso em tempo real.
+                  Assim que alguém pedir pelo cardápio, a equipe recebe esse aviso em tempo real.
                 </p>
               </div>
               <Badge className="w-fit bg-accent text-accent-foreground">
-                {stats.waitingApproval} aguardando aprovacao
+                {stats.waitingApproval} aguardando aprovação
               </Badge>
             </div>
           </section>
@@ -1638,7 +1638,7 @@ export default function AdminPanel() {
                   Mesas e QR Codes
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Cadastre mesas, gere o QR automaticamente e entregue um PDF pronto para imprimir no salao.
+                  Cadastre mesas, gere o QR automaticamente e entregue um PDF pronto para imprimir no salão.
                 </p>
               </div>
               <Button
@@ -1743,9 +1743,9 @@ export default function AdminPanel() {
 
           <Card className={sectionCardClass}>
             <CardHeader>
-              <CardTitle>Experiencia do cliente no salao</CardTitle>
+              <CardTitle>Experiência do cliente no salão</CardTitle>
               <p className="text-sm text-muted-foreground">
-                O cliente pode navegar no cardapio de fora, mas so consegue pedir depois de escanear o QR da mesa dentro do restaurante.
+                O cliente pode navegar no cardápio de fora, mas só consegue pedir depois de escanear o QR da mesa dentro do restaurante.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1754,7 +1754,7 @@ export default function AdminPanel() {
                   Fluxo seguro
                 </p>
                 <div className="mt-3 space-y-3 text-sm text-muted-foreground">
-                  <p>1. O visitante externo ve o cardapio completo, fotos e categorias.</p>
+                  <p>1. O visitante externo vê o cardápio completo, fotos e categorias.</p>
                   <p>2. Sem QR da mesa, o sistema bloqueia o checkout e reforca o convite para visitar o Fogareiro.</p>
                   <p>3. Dentro do restaurante, o QR libera o pedido presencial com mesa, nome e telefone.</p>
                 </div>
@@ -1766,8 +1766,8 @@ export default function AdminPanel() {
                 </p>
                 <div className="mt-3 space-y-2 text-sm text-muted-foreground">
                   <p>QR Code da mesa</p>
-                  <p>Numero e nome da mesa</p>
-                  <p>Link direto para o cardapio presencial</p>
+                  <p>Número e nome da mesa</p>
+                  <p>Link direto para o cardápio presencial</p>
                   <p>Layout pronto para imprimir e colocar na mesa</p>
                 </div>
               </div>
@@ -1783,7 +1783,7 @@ export default function AdminPanel() {
             <CardHeader>
               <CardTitle>Gerenciador de login</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Crie acessos da equipe e mantenha controle rapido de permissoes e senhas.
+                Crie acessos da equipe e mantenha controle rápido de permissões e senhas.
               </p>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -1800,7 +1800,7 @@ export default function AdminPanel() {
                     <div>
                       <p className="font-semibold text-foreground">Criar novo login</p>
                       <p className="text-sm text-muted-foreground">
-                        Cadastre administrador, cozinha ou garcom.
+                        Cadastre administrador, cozinha ou garçom.
                       </p>
                     </div>
                   </div>
@@ -1818,7 +1818,7 @@ export default function AdminPanel() {
                     <div>
                       <p className="font-semibold text-foreground">Gerenciar equipe</p>
                       <p className="text-sm text-muted-foreground">
-                        Veja acessos, troque senhas e ative ou desative usuarios.
+                        Veja acessos, troque senhas e ative ou desative usuários.
                       </p>
                     </div>
                   </div>
@@ -1845,7 +1845,7 @@ export default function AdminPanel() {
                     Perfis criados
                   </p>
                   <p className="mt-2 text-sm font-semibold text-foreground">
-                    Admin, cozinha e garcom
+                    Admin, cozinha e garçom
                   </p>
                 </div>
               </div>
@@ -1855,7 +1855,7 @@ export default function AdminPanel() {
           <Dialog open={isShowcaseAlbumOpen} onOpenChange={setIsShowcaseAlbumOpen}>
             <DialogContent className="max-h-[calc(100dvh-1rem)] max-w-[min(1080px,calc(100vw-1rem))] border-border/70 bg-card/98 sm:max-w-[min(1080px,calc(100vw-2rem))]">
               <DialogHeader className="pr-8">
-                <DialogTitle>Album da TV</DialogTitle>
+                <DialogTitle>Álbum da TV</DialogTitle>
                 <DialogDescription>
                   Adicione fotos exclusivas para o slideshow da tela dos clientes.
                 </DialogDescription>
@@ -1864,7 +1864,7 @@ export default function AdminPanel() {
               <div className="fogareiro-scrollbar max-h-[calc(100dvh-16rem)] space-y-4 overflow-y-auto pr-1">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold">Tempo padrao (segundos)</label>
+                    <label className="mb-2 block text-sm font-semibold">Tempo padrão (segundos)</label>
                     <Input
                       type="number"
                       min="3"
@@ -1873,7 +1873,7 @@ export default function AdminPanel() {
                       onChange={(event) => setShowcaseDefaultSeconds(event.target.value)}
                     />
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Usado quando o slide nao tiver tempo personalizado.
+                      Usado quando o slide não tiver tempo personalizado.
                     </p>
                   </div>
                   <div className="space-y-3 rounded-2xl border border-border/70 bg-background/35 p-4">
@@ -1888,7 +1888,7 @@ export default function AdminPanel() {
                     <div>
                       <label className="mb-2 block text-sm font-semibold">Subtitulo da tela</label>
                       <Input
-                        placeholder="Ex: Cardapio da casa"
+                        placeholder="Ex: Cardápio da casa"
                         value={showcaseSubtitle}
                         onChange={(event) => setShowcaseSubtitle(event.target.value)}
                       />
@@ -1902,7 +1902,7 @@ export default function AdminPanel() {
                 <div className="space-y-3">
                   {showcaseSlidesDraft.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-border/70 bg-background/30 p-4 text-sm text-muted-foreground">
-                      Nenhuma foto no album ainda. Clique em "Adicionar slide".
+                      Nenhuma foto no álbum ainda. Clique em "Adicionar slide".
                     </div>
                   ) : (
                     showcaseSlidesDraft.map((slide, index) => (
@@ -2025,7 +2025,7 @@ export default function AdminPanel() {
                   onClick={handleSaveShowcaseAlbum}
                   disabled={updateSettingsMutation.isPending}
                 >
-                  Salvar album
+                  Salvar álbum
                 </Button>
                 <Button
                   type="button"
@@ -2033,7 +2033,7 @@ export default function AdminPanel() {
                   onClick={handlePublishShowcaseNow}
                   disabled={updateSettingsMutation.isPending}
                 >
-                  Publicar album agora
+                  Publicar álbum agora
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -2044,13 +2044,13 @@ export default function AdminPanel() {
               <DialogHeader className="pr-8">
                 <DialogTitle>Cadastrar nova mesa</DialogTitle>
                 <DialogDescription>
-                  Assim que a mesa for criada, o sistema ja libera o QR Code e baixa um PDF pronto para impressao.
+                  Assim que a mesa for criada, o sistema já libera o QR Code e baixa um PDF pronto para impressão.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateTable} className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold">Numero da mesa</label>
+                    <label className="mb-2 block text-sm font-semibold">Número da mesa</label>
                     <Input
                       inputMode="numeric"
                       placeholder="Ex: 12"
@@ -2073,7 +2073,7 @@ export default function AdminPanel() {
                 </div>
 
                 <div className="rounded-2xl border border-border/70 bg-background/35 p-4 text-sm text-muted-foreground">
-                  O PDF vai sair com o QR Code, numero da mesa, link presencial e identidade visual do Fogareiro para colocar diretamente na mesa.
+                  O PDF vai sair com o QR Code, número da mesa, link presencial e identidade visual do Fogareiro para colocar diretamente na mesa.
                 </div>
 
                 <Button
@@ -2093,7 +2093,7 @@ export default function AdminPanel() {
               <DialogHeader className="pr-8">
                 <DialogTitle>Criar novo login</DialogTitle>
                 <DialogDescription>
-                  Cadastre um novo acesso para a equipe com o perfil certo de operacao.
+                  Cadastre um novo acesso para a equipe com o perfil certo de operação.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateStaff} className="fogareiro-scrollbar space-y-4 overflow-y-auto pr-1">
@@ -2228,7 +2228,7 @@ export default function AdminPanel() {
             <CardHeader>
               <CardTitle>Pedidos recentes</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Veja os ultimos pedidos e acompanhe a operacao em tempo real, enquanto garcom e cozinha cuidam do aceite e do andamento.
+                Veja os últimos pedidos e acompanhe a operação em tempo real, enquanto garçom e cozinha cuidam do aceite e do andamento.
               </p>
             </CardHeader>
             <CardContent className="fogareiro-scrollbar max-h-[28rem] space-y-3 overflow-y-auto pr-2">
@@ -2255,7 +2255,7 @@ export default function AdminPanel() {
 
               {orders.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Ainda nao ha pedidos registrados no sistema.
+                  Ainda não há pedidos registrados no sistema.
                 </p>
               )}
             </CardContent>
@@ -2271,7 +2271,7 @@ export default function AdminPanel() {
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <LayoutDashboard className="h-4 w-4 text-accent" />
-                  Gestao de cardapio
+                  Gestão de cardápio
                 </p>
                 <h2 className="mt-2 text-2xl font-bold text-foreground">
                   Produtos e categorias
@@ -2307,7 +2307,7 @@ export default function AdminPanel() {
                       <div className="space-y-4 sm:space-y-5">
                         <div className="rounded-2xl border border-border/60 bg-background/30 p-4 sm:p-5">
                           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-                            Informacoes principais
+                            Informações principais
                           </p>
                           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div>
@@ -2345,7 +2345,7 @@ export default function AdminPanel() {
                             </div>
                             <div>
                               <label className="mb-2 block text-sm font-semibold">
-                                Preco (R$)
+                                Preço (R$)
                               </label>
                               <Input
                                 type="number"
@@ -2371,8 +2371,8 @@ export default function AdminPanel() {
                                 }
                                 className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                               >
-                                <option value="active">Ativo no cardapio</option>
-                                <option value="inactive">Oculto do cardapio</option>
+                                <option value="active">Ativo no cardápio</option>
+                                <option value="inactive">Oculto do cardápio</option>
                               </select>
                             </div>
                           </div>
@@ -2380,11 +2380,11 @@ export default function AdminPanel() {
 
                         <div className="rounded-2xl border border-border/60 bg-background/30 p-4 sm:p-5">
                           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-                            Descricao e detalhes
+                            Descrição e detalhes
                           </p>
                           <div>
                             <label className="mb-2 block text-sm font-semibold">
-                              Descricao
+                              Descrição
                             </label>
                             <textarea
                               placeholder="Descreva o produto, acompanhamentos e diferenciais..."
@@ -2401,7 +2401,7 @@ export default function AdminPanel() {
                           </div>
                           <div className="mt-4">
                             <label className="mb-2 block text-sm font-semibold">
-                              Ingredientes ou observacoes internas
+                              Ingredientes ou observações internas
                             </label>
                             <Input
                               placeholder="Ex: arroz, salada, molho, peixe..."
@@ -2420,14 +2420,14 @@ export default function AdminPanel() {
                       <div className="space-y-4 xl:sticky xl:top-0 xl:self-start">
                         <div className="space-y-3 rounded-2xl border border-dashed border-border/70 bg-background/30 p-4 sm:p-5">
                           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-                            Imagem e apresentacao
+                            Imagem e apresentação
                           </p>
                           <div className="flex flex-col gap-3">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:flex-col lg:items-stretch">
                               <div>
                                 <p className="font-semibold text-foreground">Imagem</p>
                                 <p className="mt-1 text-sm text-muted-foreground">
-                                  Voce pode colar uma URL ou enviar um arquivo local.
+                                  Você pode colar uma URL ou enviar um arquivo local.
                                 </p>
                               </div>
                               <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
@@ -2453,7 +2453,7 @@ export default function AdminPanel() {
                             />
                             <div>
                               <label className="mb-2 block text-sm font-semibold">
-                                Ajuste da foto no cardapio
+                                Ajuste da foto no cardápio
                               </label>
                               <select
                                 value={formData.imageFit}
@@ -2568,7 +2568,7 @@ export default function AdminPanel() {
 
                         <div className="rounded-2xl border border-border/60 bg-background/30 p-4">
                           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-                            Resumo rapido
+                            Resumo rápido
                           </p>
                           <div className="mt-3 space-y-2 text-sm">
                             <div className="flex items-center justify-between gap-3">
@@ -2590,7 +2590,7 @@ export default function AdminPanel() {
                               </span>
                             </div>
                             <div className="flex items-center justify-between gap-3">
-                              <span className="text-muted-foreground">Preco</span>
+                              <span className="text-muted-foreground">Preço</span>
                               <span className="font-medium text-accent">
                                 {formData.price ? formatPrice(formData.price) : "R$ 0,00"}
                               </span>
@@ -2649,7 +2649,7 @@ export default function AdminPanel() {
                       </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Sem descricao cadastrada.
+                        Sem descrição cadastrada.
                       </p>
                     )}
 
@@ -2683,7 +2683,7 @@ export default function AdminPanel() {
                         onClick={() => handleDelete(product.id)}
                       >
                         <Trash2 className="h-4 w-4" />
-                        Remover do cardapio
+                        Remover do cardápio
                       </Button>
                     </div>
                   </CardContent>
@@ -2696,25 +2696,25 @@ export default function AdminPanel() {
           <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
             <Card className={sectionCardClass}>
               <CardHeader>
-                <CardTitle>Visao rapida do painel</CardTitle>
+                <CardTitle>Visão rápida do painel</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <div className="rounded-2xl border border-border/70 bg-background/40 p-4">
-                  <p className="font-semibold text-foreground">Operacao do dia</p>
+                  <p className="font-semibold text-foreground">Operação do dia</p>
                   <p className="mt-2">
                     {stats.waitingApproval > 0
-                      ? `${stats.waitingApproval} pedido(s) aguardando aprovacao no momento.`
-                      : "Nenhum pedido aguardando aprovacao agora."}
+                      ? `${stats.waitingApproval} pedido(s) aguardando aprovação no momento.`
+                      : "Nenhum pedido aguardando aprovação agora."}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-background/40 p-4">
-                  <p className="font-semibold text-foreground">Cardapio</p>
+                  <p className="font-semibold text-foreground">Cardápio</p>
                   <p className="mt-2">
                     {stats.activeProducts} item(ns) ativos e {stats.hiddenProducts} oculto(s).
                   </p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-background/40 p-4">
-                  <p className="font-semibold text-foreground">Receita do mes</p>
+                  <p className="font-semibold text-foreground">Receita do mês</p>
                   <p className="mt-2 text-accent">{formatPrice(stats.monthlyRevenue)}</p>
                 </div>
               </CardContent>
