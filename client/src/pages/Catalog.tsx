@@ -21,11 +21,62 @@ type CatalogProduct = {
   price: number;
   imageUrl: string | null;
   imageFit: "cover" | "contain";
+  imageKey: string | null;
   ingredients: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type CachedCatalogPayload = {
+  cachedAt: number;
+  products: CatalogProduct[];
 };
 
 const FALLBACK_IMAGE =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='100%25' height='100%25' fill='%23f3efe8'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23725a3a' font-family='Arial' font-size='36'>Sem imagem</text></svg>";
+const CATALOG_CACHE_KEY = "catalog-products-cache-v1";
+const CATALOG_CACHE_TTL_MS = 1000 * 60 * 15;
+
+const readCachedCatalogProducts = (): CachedCatalogPayload | undefined => {
+  if (typeof window === "undefined") return undefined;
+
+  try {
+    const raw = window.localStorage.getItem(CATALOG_CACHE_KEY);
+    if (!raw) return undefined;
+
+    const parsed = JSON.parse(raw) as Partial<CachedCatalogPayload>;
+    if (!Array.isArray(parsed.products) || typeof parsed.cachedAt !== "number") {
+      return undefined;
+    }
+
+    if (Date.now() - parsed.cachedAt > CATALOG_CACHE_TTL_MS) {
+      window.localStorage.removeItem(CATALOG_CACHE_KEY);
+      return undefined;
+    }
+
+    return {
+      cachedAt: parsed.cachedAt,
+      products: parsed.products as CatalogProduct[],
+    };
+  } catch {
+    return undefined;
+  }
+};
+
+const persistCatalogProducts = (products: CatalogProduct[]) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const payload: CachedCatalogPayload = {
+      cachedAt: Date.now(),
+      products,
+    };
+    window.localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore localStorage quota and parsing issues to avoid blocking the catalog.
+  }
+};
 
 const getCategoryAnchor = (value: string) =>
   value
@@ -36,7 +87,13 @@ const getCategoryAnchor = (value: string) =>
     .replace(/^-+|-+$/g, "") || "sem-categoria";
 
 export default function Catalog() {
-  const { data: products, isLoading } = trpc.products.list.useQuery();
+  const cachedProducts = useMemo(() => readCachedCatalogProducts(), []);
+  const { data: products, isLoading, isFetching } = trpc.products.list.useQuery(undefined, {
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+    initialData: cachedProducts?.products,
+    initialDataUpdatedAt: cachedProducts?.cachedAt,
+  });
   const { addToCart } = useCart();
   const { pulseLoading } = useGlobalLoading();
   const [, setLocation] = useLocation();
@@ -64,6 +121,12 @@ export default function Catalog() {
   }, [tableAccessQuery.data]);
 
   useEffect(() => {
+    if (products && products.length > 0) {
+      persistCatalogProducts(products as CatalogProduct[]);
+    }
+  }, [products]);
+
+  useEffect(() => {
     if (!mesaToken || !tableAccessQuery.error) return;
     const message = tableAccessQuery.error.message || "";
     if (message.toLowerCase().includes("mesa nao autorizada")) {
@@ -76,6 +139,8 @@ export default function Catalog() {
   }, [mesaToken, tableAccessQuery.error]);
 
   const hasPresentialAccess = !!tableAccess;
+  const hasProducts = (products?.length ?? 0) > 0;
+  const showInitialLoadingState = isLoading && !hasProducts;
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -242,7 +307,7 @@ export default function Catalog() {
           </div>
         </div>
 
-        {isLoading ? (
+        {showInitialLoadingState ? (
           <div className="flex h-64 items-center justify-center">
             <div className="text-center">
               <div className="global-loading-mark mx-auto">
@@ -272,14 +337,19 @@ export default function Catalog() {
             <div className="sticky top-20 z-30 rounded-[1.75rem] border border-border/70 bg-card/88 px-4 py-4 shadow-[0_18px_45px_rgba(0,0,0,0.2)] backdrop-blur supports-[backdrop-filter]:bg-card/82">
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Ir direto para uma categoria
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Toque em um botao para navegar pelo cardapio mais rapido
-                </p>
+                  <p className="text-sm font-semibold text-foreground">
+                    Ir direto para uma categoria
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Toque em um botao para navegar pelo cardapio mais rapido
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  {isFetching && hasProducts ? (
+                    <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-accent/90 sm:text-[11px] sm:tracking-[0.25em]">
+                      Atualizando cardapio
+                    </span>
+                  ) : null}
                   <span className="rounded-full border border-white/10 bg-background/55 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-accent/90 sm:text-[11px] sm:tracking-[0.25em]">
                     Arraste para o lado
                   </span>
@@ -349,6 +419,8 @@ export default function Catalog() {
                         <img
                           src={product.imageUrl || FALLBACK_IMAGE}
                           alt={product.name}
+                          loading="lazy"
+                          decoding="async"
                           className={`h-full w-full ${product.imageFit === "contain" ? "object-contain bg-black/10 p-2" : "object-cover"} transition-transform duration-300 group-hover:scale-105`}
                         />
                         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent opacity-80" />
